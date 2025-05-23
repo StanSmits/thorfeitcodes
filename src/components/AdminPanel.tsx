@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Edit, Trash } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { supabase } from "../supabaseClient";
 import { FactCode } from "../types/factCode";
 import {
   fetchFactCodesFromApi,
@@ -14,6 +16,19 @@ const AdminPanelPage: React.FC = () => {
   const [currentCode, setCurrentCode] = useState<FactCode | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      console.log('Sessie:', data); // Controleer of de sessie correct wordt opgehaald
+      if (!data.session) {
+        navigate('/login'); // Stuur niet-ingelogde gebruikers naar de login-pagina
+      }
+    };
+  
+    checkAuth();
+  }, [navigate]);
 
   // Haal feitcodes op bij het laden van de pagina
   useEffect(() => {
@@ -112,6 +127,12 @@ const AdminPanelPage: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Succesvol uitgelogd!");
+    navigate("/login");
+  };
+
   const renderTemplatePreview = () => {
     if (!currentCode || !currentCode.template) return null;
 
@@ -138,7 +159,7 @@ const AdminPanelPage: React.FC = () => {
         Feitcodes Beheer
       </h1>
 
-      <div className="mb-6">
+      <div className="mb-6 flex justify-between items-center">
         <button
           onClick={() => {
             setCurrentCode({ id: "", code: "", description: "", template: "" });
@@ -149,6 +170,9 @@ const AdminPanelPage: React.FC = () => {
           <Plus className="w-4 h-4" />
           <span>Nieuwe Feitcode</span>
         </button>
+        <button onClick={handleLogout} className="btn-secondary">
+        Uitloggen
+      </button>
       </div>
 
       {currentCode && (
