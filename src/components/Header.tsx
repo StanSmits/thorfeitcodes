@@ -5,7 +5,7 @@ const Header: React.FC = () => {
   return (
     <header className="bg-white shadow-sm">
       <div className="container mx-auto px-4 py-2">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4" onClick={() => window.location.href = '/'} role="button">
           <div className="w-6 h-6">
             <AmsterdamLogo />
           </div>

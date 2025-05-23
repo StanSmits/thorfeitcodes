@@ -1,47 +1,74 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
+import { Plus, Edit, Trash } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { FactCode } from '../types/factCode';
 import { factCodes } from '../data/factCodes';
 
-const AdminPanel: React.FC = () => {
+const AdminPanelPage: React.FC = () => {
   const [codes, setCodes] = useState<FactCode[]>(factCodes);
-  const [editingCode, setEditingCode] = useState<FactCode | null>(null);
-  const [newCode, setNewCode] = useState<FactCode>({
-    code: '',
-    description: '',
-    template: ''
-  });
-  const [isAdding, setIsAdding] = useState(false);
+  const [currentCode, setCurrentCode] = useState<FactCode | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const handleEdit = (code: FactCode) => {
-    setEditingCode({ ...code });
+  const handleSave = () => {
+    if (currentCode) {
+      if (isEditing) {
+        setCodes(codes.map(c => (c.code === currentCode.code ? currentCode : c)));
+        toast.success('Feitcode succesvol bijgewerkt!');
+      } else {
+        setCodes([...codes, currentCode]);
+        toast.success('Nieuwe feitcode succesvol toegevoegd!');
+      }
+      setCurrentCode(null);
+      setIsEditing(false);
+    }
   };
 
-  const handleSave = (code: FactCode) => {
-    setCodes(codes.map(c => c.code === code.code ? code : c));
-    setEditingCode(null);
+  const handleEdit = (code: FactCode) => {
+    setCurrentCode({ ...code });
+    setIsEditing(true);
   };
 
   const handleDelete = (code: FactCode) => {
     if (window.confirm('Weet je zeker dat je deze feitcode wilt verwijderen?')) {
       setCodes(codes.filter(c => c.code !== code.code));
+      toast.success('Feitcode succesvol verwijderd!');
     }
   };
 
-  const handleAdd = () => {
-    if (newCode.code && newCode.description && newCode.template) {
-      setCodes([...codes, newCode]);
-      setNewCode({ code: '', description: '', template: '' });
-      setIsAdding(false);
+  const handleFieldChange = (field: keyof FactCode, value: string) => {
+    if (currentCode) {
+      setCurrentCode({ ...currentCode, [field]: value });
     }
+  };
+
+  const renderTemplatePreview = () => {
+    if (!currentCode) return null;
+
+    const fieldRegex = /\{([^}]+)\}/g;
+    let template = currentCode.template;
+    const matches = [...template.matchAll(fieldRegex)];
+
+    matches.forEach(match => {
+      const field = match[1];
+      template = template.replace(
+        match[0],
+        `<span class="bg-yellow-100 text-yellow-800 px-1 rounded">${currentCode[field as keyof FactCode] || `[${field}]`}</span>`
+      );
+    });
+
+    return <div dangerouslySetInnerHTML={{ __html: template }} />;
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Feitcodes Beheer</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Feitcodes Beheer</h1>
+
+      <div className="mb-6">
         <button
-          onClick={() => setIsAdding(true)}
+          onClick={() => {
+            setCurrentCode({ code: '', description: '', template: '' });
+            setIsEditing(false);
+          }}
           className="btn-primary flex items-center space-x-2"
         >
           <Plus className="w-4 h-4" />
@@ -49,15 +76,15 @@ const AdminPanel: React.FC = () => {
         </button>
       </div>
 
-      {isAdding && (
+      {currentCode && (
         <div className="bg-white p-6 rounded-lg shadow-md mb-6">
           <div className="grid gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
               <input
                 type="text"
-                value={newCode.code}
-                onChange={(e) => setNewCode({ ...newCode, code: e.target.value })}
+                value={currentCode.code}
+                onChange={(e) => handleFieldChange('code', e.target.value)}
                 className="input-primary"
               />
             </div>
@@ -65,32 +92,40 @@ const AdminPanel: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Beschrijving</label>
               <input
                 type="text"
-                value={newCode.description}
-                onChange={(e) => setNewCode({ ...newCode, description: e.target.value })}
+                value={currentCode.description}
+                onChange={(e) => handleFieldChange('description', e.target.value)}
                 className="input-primary"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Template</label>
               <textarea
-                value={newCode.template}
-                onChange={(e) => setNewCode({ ...newCode, template: e.target.value })}
+                value={currentCode.template}
+                onChange={(e) => handleFieldChange('template', e.target.value)}
                 className="input-primary h-32"
               />
             </div>
+            <div>
+              <h4 className="text-md font-medium text-gray-700 mb-3">Template Preview:</h4>
+              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                {renderTemplatePreview()}
+              </div>
+            </div>
             <div className="flex justify-end space-x-2">
               <button
-                onClick={() => setIsAdding(false)}
+                onClick={() => {
+                  setCurrentCode(null);
+                }}
                 className="btn-secondary"
               >
                 Annuleren
               </button>
               <button
-                onClick={handleAdd}
+                onClick={handleSave}
                 className="btn-primary"
-                disabled={!newCode.code || !newCode.description || !newCode.template}
+                disabled={!currentCode.code || !currentCode.description || !currentCode.template}
               >
-                Toevoegen
+                {isEditing ? 'Opslaan' : 'Toevoegen'}
               </button>
             </div>
           </div>
@@ -109,62 +144,23 @@ const AdminPanel: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {codes.map((code) => (
               <tr key={code.code}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {editingCode?.code === code.code ? (
-                    <input
-                      type="text"
-                      value={editingCode.code}
-                      onChange={(e) => setEditingCode({ ...editingCode, code: e.target.value })}
-                      className="input-primary"
-                    />
-                  ) : (
-                    code.code
-                  )}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {editingCode?.code === code.code ? (
-                    <input
-                      type="text"
-                      value={editingCode.description}
-                      onChange={(e) => setEditingCode({ ...editingCode, description: e.target.value })}
-                      className="input-primary w-full"
-                    />
-                  ) : (
-                    code.description
-                  )}
-                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{code.code}</td>
+                <td className="px-6 py-4 text-sm text-gray-500">{code.description}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {editingCode?.code === code.code ? (
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => setEditingCode(null)}
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleSave(editingCode)}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        <Save className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => handleEdit(code)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(code)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex justify-end space-x-4">
+                    <button
+                      onClick={() => handleEdit(code)}
+                      className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(code)}
+                      className="text-red-600 hover:text-red-900 flex items-center space-x-1"
+                    >
+                      <Trash className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -175,4 +171,4 @@ const AdminPanel: React.FC = () => {
   );
 };
 
-export default AdminPanel;
+export default AdminPanelPage;
