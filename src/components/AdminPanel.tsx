@@ -1,25 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FactCode } from '../types/factCode';
-import { factCodes } from '../data/factCodes';
+import { addFactCodeToApi, updateFactCodeInApi, deleteFactCodeFromApi, fetchFactCodesFromApi} from '../api/factCodesApi';
 
 const AdminPanelPage: React.FC = () => {
-  const [codes, setCodes] = useState<FactCode[]>(factCodes);
+  const [codes, setCodes] = useState<FactCode[]>([]);
   const [currentCode, setCurrentCode] = useState<FactCode | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const handleSave = () => {
-    if (currentCode) {
-      if (isEditing) {
-        setCodes(codes.map(c => (c.code === currentCode.code ? currentCode : c)));
-        toast.success('Feitcode succesvol bijgewerkt!');
-      } else {
-        setCodes([...codes, currentCode]);
-        toast.success('Nieuwe feitcode succesvol toegevoegd!');
+  useEffect(() => {
+    const loadFactCodes = async () => {
+      try {
+        const data = await fetchFactCodesFromApi();
+        setCodes(data);
+      } catch (err) {
+        toast.error('Fout bij het ophalen van feitcodes.');
       }
-      setCurrentCode(null);
-      setIsEditing(false);
+    };
+
+    loadFactCodes();
+  }, []);
+
+  const handleSave = async () => {
+    if (currentCode) {
+      try {
+        if (isEditing) {
+          await updateFactCodeInApi(currentCode.id, currentCode);
+          toast.success('Feitcode succesvol bijgewerkt!');
+        } else {
+          await addFactCode(currentCode);
+          toast.success('Nieuwe feitcode succesvol toegevoegd!');
+        }
+
+        const updatedCodes = await fetchFactCodesFromApi();
+        setCodes(updatedCodes);
+        setCurrentCode(null);
+        setIsEditing(false);
+      } catch (error) {
+        toast.error('Fout bij het opslaan van de feitcode.');
+      }
     }
   };
 
@@ -28,10 +48,16 @@ const AdminPanelPage: React.FC = () => {
     setIsEditing(true);
   };
 
-  const handleDelete = (code: FactCode) => {
+  const handleDelete = async (code: FactCode) => {
     if (window.confirm('Weet je zeker dat je deze feitcode wilt verwijderen?')) {
-      setCodes(codes.filter(c => c.code !== code.code));
-      toast.success('Feitcode succesvol verwijderd!');
+      try {
+        await deleteFactCodeFromApi(code.id);
+        toast.success('Feitcode succesvol verwijderd!');
+        const updatedCodes = await fetchFactCodesFromApi();
+        setCodes(updatedCodes);
+      } catch (error) {
+        toast.error('Fout bij het verwijderen van de feitcode.');
+      }
     }
   };
 
@@ -66,7 +92,7 @@ const AdminPanelPage: React.FC = () => {
       <div className="mb-6">
         <button
           onClick={() => {
-            setCurrentCode({ code: '', description: '', template: '' });
+            setCurrentCode({ id: '', code: '', description: '', template: '' });
             setIsEditing(false);
           }}
           className="btn-primary flex items-center space-x-2"
@@ -143,7 +169,7 @@ const AdminPanelPage: React.FC = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {codes.map((code) => (
-              <tr key={code.code}>
+              <tr key={code.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{code.code}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{code.description}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
