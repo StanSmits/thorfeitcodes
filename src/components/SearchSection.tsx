@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, AlertCircle, X } from 'lucide-react';
-import TemplateDisplay from './TemplateDisplay';
-import { supabase } from '../supabaseClient'; // Zorg dat de Supabase client goed is geconfigureerd
-import { FactCode } from '../types/factCode';
+import React, { useState, useEffect, useRef } from "react";
+import { Search, AlertCircle, X } from "lucide-react";
+import TemplateDisplay from "./TemplateDisplay";
+import { supabase } from "../supabaseClient";
+import { FactCode } from "../types/factCode";
 
 const SearchSection: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState<FactCode[]>([]);
   const [selectedCode, setSelectedCode] = useState<FactCode | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -14,20 +14,20 @@ const SearchSection: React.FC = () => {
 
   // Laad recente zoekopdrachten en focus op het zoekveld
   useEffect(() => {
-    const savedSearches = localStorage.getItem('recentSearches');
+    const savedSearches = localStorage.getItem("recentSearches");
     if (savedSearches) {
       setRecentSearches(JSON.parse(savedSearches));
     }
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    inputRef.current?.focus();
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setSuggestions([]);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   // Haal suggesties op op basis van de zoekterm via Supabase
@@ -39,45 +39,42 @@ const SearchSection: React.FC = () => {
       }
 
       const normalizedTerm = searchTerm.toLowerCase();
-
       // Query op de kolom "factcode" met een limiet
       const { data: factcodeData, error: factcodeError } = await supabase
-        .from('feitcodes')
-        .select('id, factcode, description, template')
-        .ilike('factcode', `%${normalizedTerm}%`)
+        .from("feitcodes")
+        .select("id, factcode, description, template")
+        .ilike("factcode", `%${normalizedTerm}%`)
         .limit(8);
 
-      console.log('Factcode data:', factcodeData);
-
       if (factcodeError) {
-        console.error('Supabase fout:', factcodeError);
+        console.error("Supabase fout:", factcodeError);
         setSuggestions([]);
         return;
       }
 
       // Extra query op de description (optioneel)
       const { data: descriptionData, error: descriptionError } = await supabase
-        .from('feitcodes')
-        .select('id, factcode, description, template')
-        .ilike('description', `%${normalizedTerm}%`)
+        .from("feitcodes")
+        .select("id, factcode, description, template")
+        .ilike("description", `%${normalizedTerm}%`)
         .limit(8);
 
       if (descriptionError) {
-        console.error('Supabase fout bij description:', descriptionError);
+        console.error("Supabase fout bij description:", descriptionError);
         setSuggestions([]);
         return;
       }
 
-      // Merge de twee resultaten en filter op unieke factcode waarden
+      // Merge de twee resultaten en filter op unieke waarden op basis van "factcode"
       const merged = [...(factcodeData || []), ...(descriptionData || [])];
-      const uniqueMap = new Map<string, { id: number; factcode: string; description: string; template: string }>();
-      merged.forEach(item => {
+      const uniqueMap = new Map<string, any>();
+      merged.forEach((item) => {
         uniqueMap.set(item.factcode, item);
       });
       const uniqueArray = Array.from(uniqueMap.values());
 
       // Transformeer: maak property "code" op basis van "factcode"
-      const suggestionsData = uniqueArray.slice(0, 8).map((item: { id: number; factcode: string; description: string; template: string }) => ({
+      const suggestionsData = uniqueArray.slice(0, 8).map((item: any) => ({
         id: item.id.toString(),
         code: item.factcode,
         description: item.description,
@@ -98,31 +95,73 @@ const SearchSection: React.FC = () => {
     setSelectedCode(code);
     setSearchTerm(code.code);
     setSuggestions([]);
-    const updatedSearches = [code.code, ...recentSearches.filter((s) => s !== code.code)].slice(0, 5);
+    const updatedSearches = [
+      code.code,
+      ...recentSearches.filter((s) => s !== code.code),
+    ].slice(0, 5);
     setRecentSearches(updatedSearches);
-    localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
+    localStorage.setItem("recentSearches", JSON.stringify(updatedSearches));
   };
 
   const handleClearSearch = () => {
-    setSearchTerm('');
+    setSearchTerm("");
     setSuggestions([]);
     setSelectedCode(null);
-    if (inputRef.current) inputRef.current.focus();
+    inputRef.current?.focus();
   };
 
-  const handleRecentSearch = (code: string) => {
-    const foundCode = suggestions.find((c) => c.code === code);
+  const handleRecentSearch = async (code: string) => {
+    // Controleer of de code al in de suggesties staat
+    let foundCode = suggestions.find((c) => c.code === code);
+
+    // Als de code niet in de suggesties staat, haal alle feitcodes op
+    if (!foundCode) {
+      try {
+        const allFactCodes = await supabase
+          .from("feitcodes")
+          .select("id, factcode, description, template");
+
+        if (allFactCodes.error) {
+          console.error(
+            "Fout bij het ophalen van feitcodes:",
+            allFactCodes.error
+          );
+          return;
+        }
+
+        // Zoek de code in de opgehaalde feitcodes
+        foundCode = allFactCodes.data.find((c: any) => c.factcode === code);
+
+        // Map de database-kolom 'factcode' naar 'code' voor de frontend
+        if (foundCode) {
+          foundCode = {
+            id: foundCode.id,
+            code: foundCode.factcode,
+            description: foundCode.description,
+            template: foundCode.template,
+          };
+        }
+      } catch (error) {
+        console.error("Fout bij het ophalen van feitcodes:", error);
+        return;
+      }
+    }
+
+    // Als de code is gevonden, selecteer deze
     if (foundCode) {
-      handleSelectCode(foundCode);
+      handleSelectCode(foundCode as FactCode);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Feitcode Zoeker</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-2">
+          Feitcode Zoeker
+        </h2>
         <p className="text-sm text-gray-600">
-          Zoek een feitcode om een gestandaardiseerde reden van wetenschap te genereren
+          Zoek een feitcode om een gestandaardiseerde reden van wetenschap te
+          genereren
         </p>
       </div>
 
@@ -145,7 +184,7 @@ const SearchSection: React.FC = () => {
               onClick={handleClearSearch}
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
             >
-              <X className="h-5 w-5"/>
+              <X className="h-5 w-5" />
             </button>
           )}
         </div>
@@ -159,7 +198,9 @@ const SearchSection: React.FC = () => {
                 onClick={() => handleSelectCode(code)}
               >
                 <div className="flex items-start">
-                  <span className="font-medium text-[#004699] mr-2">{code.code}</span>
+                  <span className="font-medium text-[#004699] mr-2">
+                    {code.code}
+                  </span>
                   <span className="text-gray-700">{code.description}</span>
                 </div>
               </div>
@@ -171,15 +212,17 @@ const SearchSection: React.FC = () => {
           <div className="search-results p-4 text-center mt-2">
             <div className="flex flex-col items-center text-gray-600">
               <AlertCircle className="h-6 w-6 mb-2 text-gray-400" />
-              <p>Geen feitcodes gevonden voor "{searchTerm}"</p>
+              <p>Geen feitcodes gevonden voor &quot;{searchTerm}&quot;</p>
             </div>
           </div>
         )}
       </div>
 
       {recentSearches.length > 0 && !selectedCode && (
-        <div className="mb-6">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Recent gezocht:</h3>
+        <div className="mb-6 mt-4">
+          <h3 className="text-sm font-medium text-gray-500 mb-2">
+            Recent gezocht:
+          </h3>
           <div className="flex flex-wrap gap-2">
             {recentSearches.map((code) => (
               <button

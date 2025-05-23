@@ -8,12 +8,18 @@ export const fetchFactCodesFromApi = async (): Promise<FactCode[]> => {
 
   if (error) throw new Error(error.message);
 
-  return data as FactCode[];
+  // Map 'factcode' naar 'code' voor de frontend
+  return data.map(item => ({
+    id: item.id,
+    code: item.factcode, // Map 'factcode' naar 'code'
+    description: item.description,
+    template: item.template,
+  })) as FactCode[];
 };
 
 export const addFactCodeToApi = async (factCode: FactCode): Promise<void> => {
   const { error } = await supabase.from('feitcodes').insert({
-    factcode: factCode.factcode,
+    factcode: factCode.code, // Map 'code' naar 'factcode'
     description: factCode.description,
     template: factCode.template,
   });
@@ -25,7 +31,7 @@ export const updateFactCodeInApi = async (id: string, updates: Partial<FactCode>
   const { error } = await supabase
     .from('feitcodes')
     .update({
-      factcode: updates.factcode,
+      factcode: updates.code, // Map 'code' naar 'factcode'
       description: updates.description,
       template: updates.template,
     })
