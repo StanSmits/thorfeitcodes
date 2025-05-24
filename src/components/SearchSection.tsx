@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, AlertCircle, X } from "lucide-react";
+import { Search, AlertCircle, X, Loader2 } from "lucide-react";
 import TemplateDisplay from "./TemplateDisplay";
 import { supabase } from "../supabaseClient";
 import { FactCode } from "../types/factCode";
@@ -9,6 +9,8 @@ const SearchSection: React.FC = () => {
   const [suggestions, setSuggestions] = useState<FactCode[]>([]);
   const [selectedCode, setSelectedCode] = useState<FactCode | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -38,48 +40,83 @@ const SearchSection: React.FC = () => {
         return;
       }
 
-      const normalizedTerm = searchTerm.toLowerCase();
-      const { data, error } = await supabase
-        .from("feitcodes")
-        .select("id, factcode, description, template")
-        .ilike("factcode", `${normalizedTerm}%`)
-        .limit(5);
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("feitcodes")
+          .select("factcode")
+          .ilike("factcode", `${searchTerm.toLowerCase()}%`)
+          .limit(5);
 
-      if (error) {
-        console.error("Supabase error:", error);
+        if (error) {
+          console.error("Supabase error:", error);
+          setSuggestions([]);
+          return;
+        }
+
+        const suggestionsData = data.map((item) => ({
+          code: item.factcode,
+        }));
+
+        setSuggestions(suggestionsData);
+      } catch (error) {
+        console.error("Error fetching suggestions:", error);
         setSuggestions([]);
-        return;
+      } finally {
+        setIsLoading(false);
       }
-
-      const suggestionsData = data.map((item) => ({
-        id: item.id,
-        code: item.factcode,
-        description: item.description,
-        template: item.template,
-      }));
-
-      setSuggestions(suggestionsData);
     };
 
     const debounceTimer = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, selectedCode]);
 
+  const fetchFactCodeDetails = async (code: string): Promise<FactCode | null> => {
+    setIsLoadingDetails(true);
+    try {
+      const { data, error } = await supabase
+        .from("feitcodes")
+        .select("id, factcode, description, template")
+        .eq("factcode", code)
+        .single();
+
+      if (error) {
+        console.error("Error fetching fact code details:", error);
+        return null;
+      }
+
+      return {
+        id: data.id,
+        code: data.factcode,
+        description: data.description,
+        template: data.template,
+      };
+    } catch (error) {
+      console.error("Error fetching fact code details:", error);
+      return null;
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     setSelectedCode(null);
   };
 
-  const handleSelectCode = (code: FactCode) => {
-    setSelectedCode(code);
-    setSearchTerm(code.code);
-    setSuggestions([]);
-    const updatedSearches = [
-      code.code,
-      ...recentSearches.filter((s) => s !== code.code),
-    ].slice(0, 5);
-    setRecentSearches(updatedSearches);
-    localStorage.setItem("recentSearches", JSON.stringify(updatedSearches));
+  const handleSelectCode = async (suggestion: { code: string }) => {
+    const factCode = await fetchFactCodeDetails(suggestion.code);
+    if (factCode) {
+      setSelectedCode(factCode);
+      setSearchTerm(factCode.code);
+      setSuggestions([]);
+      const updatedSearches = [
+        factCode.code,
+        ...recentSearches.filter((s) => s !== factCode.code),
+      ].slice(0, 5);
+      setRecentSearches(updatedSearches);
+      localStorage.setItem("recentSearches", JSON.stringify(updatedSearches));
+    }
   };
 
   const handleClearSearch = () => {
@@ -90,25 +127,9 @@ const SearchSection: React.FC = () => {
   };
 
   const handleRecentSearch = async (code: string) => {
-    const { data, error } = await supabase
-      .from("feitcodes")
-      .select("id, factcode, description, template")
-      .eq("factcode", code)
-      .single();
-
-    if (error) {
-      console.error("Error fetching fact code:", error);
-      return;
-    }
-
-    if (data) {
-      const factCode: FactCode = {
-        id: data.id,
-        code: data.factcode,
-        description: data.description,
-        template: data.template,
-      };
-      handleSelectCode(factCode);
+    const factCode = await fetchFactCodeDetails(code);
+    if (factCode) {
+      handleSelectCode({ code: factCode.code });
     }
   };
 
@@ -127,7 +148,11 @@ const SearchSection: React.FC = () => {
       <div ref={searchRef} className="search-input-container mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+            ) : (
+              <Search className="h-5 w-5 text-gray-400" />
+            )}
           </div>
           <input
             ref={inputRef}
@@ -150,24 +175,23 @@ const SearchSection: React.FC = () => {
 
         {suggestions.length > 0 && (
           <div className="search-results mt-2">
-            {suggestions.map((code) => (
+            {suggestions.map((suggestion) => (
               <div
-                key={code.code}
+                key={suggestion.code}
                 className="px-4 py-3 cursor-pointer hover:bg-gray-100 border-b border-gray-100 transition duration-200"
-                onClick={() => handleSelectCode(code)}
+                onClick={() => handleSelectCode(suggestion)}
               >
                 <div className="flex items-start">
-                  <span className="font-medium text-[#004699] mr-2">
-                    {code.code}
+                  <span className="font-medium text-[#004699]">
+                    {suggestion.code}
                   </span>
-                  <span className="text-gray-700">{code.description}</span>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {!suggestions.length && searchTerm && !selectedCode && (
+        {!suggestions.length && searchTerm && !selectedCode && !isLoading && (
           <div className="search-results p-4 text-center mt-2">
             <div className="flex flex-col items-center text-gray-600">
               <AlertCircle className="h-6 w-6 mb-2 text-gray-400" />
@@ -196,7 +220,13 @@ const SearchSection: React.FC = () => {
         </div>
       )}
 
-      {selectedCode && <TemplateDisplay factCode={selectedCode} />}
+      {isLoadingDetails ? (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+        </div>
+      ) : (
+        selectedCode && <TemplateDisplay factCode={selectedCode} />
+      )}
     </div>
   );
 };
