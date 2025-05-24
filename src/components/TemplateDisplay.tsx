@@ -18,16 +18,18 @@ const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
 
   useEffect(() => {
     const fieldRegex = /\{([^}]+)\}/g;
-    const fields: Record<string, string> = {};
+    const fields: Record<string, string> = { ...editableFields }; // Behoud bestaande waarden
     let match;
 
     while ((match = fieldRegex.exec(factCode.template)) !== null) {
-      fields[match[1]] = '';
+      if (!(match[1] in fields)) {
+        fields[match[1]] = ''; // Voeg nieuwe velden toe zonder bestaande te overschrijven
+      }
     }
 
     setEditableFields(fields);
     updateDisplayText(fields, isHeld, reason);
-  }, [factCode, isHeld, reason]);
+  }, [factCode]);
 
   const updateDisplayText = (fields: Record<string, string>, isHeld: boolean, reason: string) => {
     let text = factCode.template;
@@ -120,6 +122,7 @@ const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
                   onChange={(e) => {
                     setIsHeld(e.target.checked);
                     if (e.target.checked) setReason(''); // Reset reden als checkbox is aangevinkt
+                    updateDisplayText(editableFields, e.target.checked, reason);
                   }}
                   className="form-checkbox"
                 />
