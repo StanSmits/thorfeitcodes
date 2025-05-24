@@ -12,25 +12,25 @@ const SearchSection: React.FC = () => {
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Laad recente zoekopdrachten en focus op het zoekveld
   useEffect(() => {
     const savedSearches = localStorage.getItem("recentSearches");
     if (savedSearches) {
       setRecentSearches(JSON.parse(savedSearches));
     }
     inputRef.current?.focus();
+    
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setSuggestions([]);
       }
     };
+    
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  // Haal suggesties op op basis van de zoekterm via Supabase
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (!searchTerm.trim() || selectedCode) {
@@ -39,51 +39,30 @@ const SearchSection: React.FC = () => {
       }
 
       const normalizedTerm = searchTerm.toLowerCase();
-      // Query op de kolom "factcode" met een limiet
-      const { data: factcodeData, error: factcodeError } = await supabase
+      const { data, error } = await supabase
         .from("feitcodes")
         .select("id, factcode, description, template")
-        .ilike("factcode", `%${normalizedTerm}%`)
-        .limit(8);
+        .ilike("factcode", `${normalizedTerm}%`)
+        .limit(5);
 
-      if (factcodeError) {
-        console.error("Supabase fout:", factcodeError);
+      if (error) {
+        console.error("Supabase error:", error);
         setSuggestions([]);
         return;
       }
 
-      // Extra query op de description (optioneel)
-      const { data: descriptionData, error: descriptionError } = await supabase
-        .from("feitcodes")
-        .select("id, factcode, description, template")
-        .ilike("description", `%${normalizedTerm}%`)
-        .limit(8);
-
-      if (descriptionError) {
-        console.error("Supabase fout bij description:", descriptionError);
-        setSuggestions([]);
-        return;
-      }
-
-      // Merge de twee resultaten en filter op unieke waarden op basis van "factcode"
-      const merged = [...(factcodeData || []), ...(descriptionData || [])];
-      const uniqueMap = new Map<string, any>();
-      merged.forEach((item) => {
-        uniqueMap.set(item.factcode, item);
-      });
-      const uniqueArray = Array.from(uniqueMap.values());
-
-      // Transformeer: maak property "code" op basis van "factcode"
-      const suggestionsData = uniqueArray.slice(0, 8).map((item: any) => ({
-        id: item.id.toString(),
+      const suggestionsData = data.map((item) => ({
+        id: item.id,
         code: item.factcode,
         description: item.description,
         template: item.template,
       }));
+
       setSuggestions(suggestionsData);
     };
 
-    fetchSuggestions();
+    const debounceTimer = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(debounceTimer);
   }, [searchTerm, selectedCode]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,45 +90,25 @@ const SearchSection: React.FC = () => {
   };
 
   const handleRecentSearch = async (code: string) => {
-    // Controleer of de code al in de suggesties staat
-    let foundCode = suggestions.find((c) => c.code === code);
+    const { data, error } = await supabase
+      .from("feitcodes")
+      .select("id, factcode, description, template")
+      .eq("factcode", code)
+      .single();
 
-    // Als de code niet in de suggesties staat, haal alle feitcodes op
-    if (!foundCode) {
-      try {
-        const allFactCodes = await supabase
-          .from("feitcodes")
-          .select("id, factcode, description, template");
-
-        if (allFactCodes.error) {
-          console.error(
-            "Fout bij het ophalen van feitcodes:",
-            allFactCodes.error
-          );
-          return;
-        }
-
-        // Zoek de code in de opgehaalde feitcodes
-        foundCode = allFactCodes.data.find((c: any) => c.factcode === code);
-
-        // Map de database-kolom 'factcode' naar 'code' voor de frontend
-        if (foundCode) {
-          foundCode = {
-            id: foundCode.id,
-            code: foundCode.factcode,
-            description: foundCode.description,
-            template: foundCode.template,
-          };
-        }
-      } catch (error) {
-        console.error("Fout bij het ophalen van feitcodes:", error);
-        return;
-      }
+    if (error) {
+      console.error("Error fetching fact code:", error);
+      return;
     }
 
-    // Als de code is gevonden, selecteer deze
-    if (foundCode) {
-      handleSelectCode(foundCode as FactCode);
+    if (data) {
+      const factCode: FactCode = {
+        id: data.id,
+        code: data.factcode,
+        description: data.description,
+        template: data.template,
+      };
+      handleSelectCode(factCode);
     }
   };
 
@@ -176,7 +135,7 @@ const SearchSection: React.FC = () => {
             value={searchTerm}
             onChange={handleSearchChange}
             className="input-primary pl-10 pr-10 py-3 text-lg shadow-sm"
-            placeholder="Zoek op feitcode of omschrijving..."
+            placeholder="Zoek op feitcode..."
             aria-label="Zoek feitcode"
           />
           {searchTerm && (
