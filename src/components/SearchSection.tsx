@@ -80,6 +80,10 @@ const SearchSection: React.FC = () => {
         .eq("factcode", code)
         .single();
 
+        supabase.rpc('increment_access_count', { item_id: code }).then(({ data }) => {
+          console.log('Access count incremented:', data);
+        });
+
       if (error) {
         console.error("Error fetching fact code details:", error);
         return null;
