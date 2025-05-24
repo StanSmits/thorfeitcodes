@@ -9,7 +9,7 @@ const Footer: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           <p className="text-sm text-gray-300">
-            © {currentYear} Gemeente Amsterdam
+            © {currentYear} Stan Smits
           </p>
           <div className="flex items-center space-x-4">
             <a 
