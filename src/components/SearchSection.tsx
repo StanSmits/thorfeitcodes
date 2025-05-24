@@ -135,6 +135,22 @@ const SearchSection: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Sectie die groots in het rood aangeeft dat de website nog in BETA is en er fouten kunnen optreden / niet alles klopt */}
+      <div className="bg-red-100 text-red-800 p-4 rounded-lg mb-6">
+        <p className="text-sm text-center font-semibold">
+          Deze website is nog in BETA. Er kunnen fouten optreden en niet alles
+          klopt. Gebruik met voorzichtigheid!
+        </p>
+        {/* Sectie, voor opmerkingen: contact met: stan.smits@amsterdam.nl met in de titel: FEITCODEZOEKER */}
+        <p className="text-xs text-center mt-2">
+          Voor opmerkingen of feedback, neem contact op met{" "}
+          <a
+            href="mailto:stan.smits@amsterdam.nl"
+            className="text-red-600 hover:underline"
+          > stan.smits@amsterdam.nl </a>
+          {" "}met in de titel: FEITCODEZOEKER
+        </p>
+      </div>
       <div className="mb-6 text-center">
         <h2 className="text-xl font-bold text-gray-800 mb-2">
           Feitcode Zoeker
