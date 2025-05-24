@@ -45,7 +45,7 @@ const SearchSection: React.FC = () => {
         const { data, error } = await supabase
           .from("feitcodes")
           .select("factcode")
-          .ilike("factcode", `${searchTerm.toLowerCase()}%`)
+          .ilike("factcode", `%${searchTerm.toLowerCase()}%`)
           .limit(5);
 
         if (error) {
