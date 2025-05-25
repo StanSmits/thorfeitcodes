@@ -49,6 +49,7 @@ const AdminPanel: React.FC = () => {
     try {
       if (isEditing && currentCode.id) {
         await updateFactCode(currentCode.id, currentCode);
+        await fetchFactCodes(); // Refresh list after update
       } else {
         await addFactCode(currentCode);
       }
