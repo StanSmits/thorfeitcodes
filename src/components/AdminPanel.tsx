@@ -5,7 +5,7 @@ import { FactCode } from "../types/factCode";
 import { useAuth } from "../hooks/useAuth";
 import { useFactCodes } from "../hooks/useFactCodes";
 import { Button, Input, TextArea } from "./ui";
-import { extractTemplateFields, replaceTemplateFields } from "../utils/templateUtils";
+import { highlightTemplateFields } from "../utils/templateUtils";
 import FactCodeTable from "./FactCodeTable";
 import SearchInput from "./SearchInput";
 
@@ -87,20 +87,23 @@ const AdminPanel: React.FC = () => {
 
   const renderTemplatePreview = () => {
     if (!currentCode?.template) return null;
-    const template = replaceTemplateFields(
-      currentCode.template,
-      Object.fromEntries(
-        extractTemplateFields(currentCode.template).map((field) => [
-          field,
-          currentCode[field as keyof FactCode] || "",
-        ])
-      )
-    );
+    const parts = highlightTemplateFields(currentCode.template);
+
     return (
-      <div
-        className="bg-gray-50 p-4 rounded-md border border-gray-200"
-        dangerouslySetInnerHTML={{ __html: template }}
-      />
+      <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-gray-800 whitespace-pre-line">
+        {parts.map((part, idx) =>
+          typeof part === "string" ? (
+            <span key={idx}>{part}</span>
+          ) : (
+            <span
+              key={idx}
+              className="bg-yellow-100 text-yellow-800 px-1 rounded"
+            >
+              {"{" + part.field + "}"}
+            </span>
+          )
+        )}
+      </div>
     );
   };
 

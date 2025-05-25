@@ -18,3 +18,23 @@ export const replaceTemplateFields = (
     return fields[field] || `[${field}]`;
   });
 };
+
+export function highlightTemplateFields(template: string) {
+  // Split on {field} and keep the field names
+  const regex = /\{([^}]+)\}/g;
+  const parts: (string | { field: string })[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(template))) {
+    if (match.index > lastIndex) {
+      parts.push(template.slice(lastIndex, match.index));
+    }
+    parts.push({ field: match[1] });
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < template.length) {
+    parts.push(template.slice(lastIndex));
+  }
+  return parts;
+}
