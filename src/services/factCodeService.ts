@@ -22,7 +22,6 @@ class FactCodeService {
 
   async updateFactCode(id: string, updates: Partial<FactCode>): Promise<void> {
     const payload = this.mapFactCodeToDatabase(updates);
-    console.log('Updating feitcodes:', { id, payload });
     const { error } = await supabase
       .from('feitcodes')
       .update(payload)
