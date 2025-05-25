@@ -28,7 +28,8 @@ const AdminPanel: React.FC = () => {
     }
     
     fetchFactCodes();
-  }, [authLoading, isAuthenticated, navigate, fetchFactCodes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated, navigate]);
 
   const handleSave = async () => {
     if (!currentCode?.code || !currentCode.description || !currentCode.template) return;

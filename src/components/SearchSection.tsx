@@ -34,7 +34,7 @@ const SearchSection: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchSuggestions = async () => {
       if (!searchTerm.trim() || selectedCode) {
         setSuggestions([]);
@@ -63,7 +63,8 @@ const SearchSection: React.FC = () => {
 
     const debounceTimer = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCode, showError]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, selectedCode]);
 
   const fetchFactCodeDetails = async (code: string): Promise<FactCode | null> => {
     setIsLoadingDetails(true);
