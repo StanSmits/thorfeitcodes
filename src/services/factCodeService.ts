@@ -1,43 +1,59 @@
-import {
-    fetchFactCodesFromApi,
-    addFactCodeToApi,
-    updateFactCodeInApi,
-    deleteFactCodeFromApi,
-  } from '../api/factCodesApi';
-  import { FactCode } from '../types/factCode';
-  
-  export const fetchFactCodes = async (): Promise<FactCode[]> => {
-    try {
-      return await fetchFactCodesFromApi();
-    } catch (error) {
-      console.error('Error fetching fact codes:', error);
-      throw error;
-    }
-  };
-  
-  export const addFactCode = async (factCode: FactCode): Promise<void> => {
-    try {
-      await addFactCodeToApi(factCode);
-    } catch (error) {
-      console.error('Error adding fact code:', error);
-      throw error;
-    }
-  };
-  
-  export const updateFactCode = async (id: string, updates: Partial<FactCode>): Promise<void> => {
-    try {
-      await updateFactCodeInApi(id, updates);
-    } catch (error) {
-      console.error('Error updating fact code:', error);
-      throw error;
-    }
-  };
-  
-  export const deleteFactCode = async (id: string): Promise<void> => {
-    try {
-      await deleteFactCodeFromApi(id);
-    } catch (error) {
-      console.error('Error deleting fact code:', error);
-      throw error;
-    }
-  };
+import { supabase } from '../config/supabase';
+import { FactCode } from '../types/factCode';
+
+class FactCodeService {
+  async fetchFactCodes(): Promise<FactCode[]> {
+    const { data, error } = await supabase
+      .from('feitcodes')
+      .select('id, factcode, description, template');
+
+    if (error) throw error;
+
+    return data.map(this.mapDatabaseToFactCode);
+  }
+
+  async addFactCode(factCode: FactCode): Promise<void> {
+    const { error } = await supabase
+      .from('feitcodes')
+      .insert(this.mapFactCodeToDatabase(factCode));
+
+    if (error) throw error;
+  }
+
+  async updateFactCode(id: string, updates: Partial<FactCode>): Promise<void> {
+    const { error } = await supabase
+      .from('feitcodes')
+      .update(this.mapFactCodeToDatabase(updates))
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  async deleteFactCode(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('feitcodes')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  private mapDatabaseToFactCode(dbRecord: any): FactCode {
+    return {
+      id: dbRecord.id,
+      code: dbRecord.factcode,
+      description: dbRecord.description,
+      template: dbRecord.template,
+    };
+  }
+
+  private mapFactCodeToDatabase(factCode: Partial<FactCode>) {
+    return {
+      ...(factCode.code && { factcode: factCode.code }),
+      ...(factCode.description && { description: factCode.description }),
+      ...(factCode.template && { template: factCode.template }),
+    };
+  }
+}
+
+export const factCodeService = new FactCodeService();
