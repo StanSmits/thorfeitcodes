@@ -1,49 +1,63 @@
-import React, { useState, useEffect } from "react";
-import { Plus, Edit, Trash } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FactCode } from "../types/factCode";
 import { useAuth } from "../hooks/useAuth";
 import { useFactCodes } from "../hooks/useFactCodes";
 import { Button, Input, TextArea } from "./ui";
 import { extractTemplateFields, replaceTemplateFields } from "../utils/templateUtils";
+import FactCodeTable from "./FactCodeTable";
+import SearchInput from "./SearchInput";
+
+const DEBOUNCE_MS = 250;
 
 const AdminPanel: React.FC = () => {
   const [currentCode, setCurrentCode] = useState<FactCode | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
-  const { 
+  const {
     isLoading,
     factCodes,
     fetchFactCodes,
     addFactCode,
     updateFactCode,
-    deleteFactCode 
+    deleteFactCode,
   } = useFactCodes();
   const navigate = useNavigate();
 
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(search), DEBOUNCE_MS);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Auth and initial data fetch
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
-    
     fetchFactCodes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isAuthenticated, navigate]);
 
+  // Save handler with refresh
   const handleSave = async () => {
     if (!currentCode?.code || !currentCode.description || !currentCode.template) return;
-
     try {
       if (isEditing && currentCode.id) {
         await updateFactCode(currentCode.id, currentCode);
       } else {
         await addFactCode(currentCode);
       }
+      await fetchFactCodes(); // Refresh list after save
       setCurrentCode(null);
       setIsEditing(false);
     } catch (error) {
       console.error(error);
+      // Optionally show error toast here
     }
   };
 
@@ -56,9 +70,9 @@ const AdminPanel: React.FC = () => {
     if (!code.id || !window.confirm("Weet je zeker dat je deze feitcode wilt verwijderen?")) {
       return;
     }
-
     try {
       await deleteFactCode(code.id);
+      await fetchFactCodes(); // Refresh list after delete
     } catch (error) {
       console.error(error);
     }
@@ -72,24 +86,33 @@ const AdminPanel: React.FC = () => {
 
   const renderTemplatePreview = () => {
     if (!currentCode?.template) return null;
-
     const template = replaceTemplateFields(
       currentCode.template,
       Object.fromEntries(
-        extractTemplateFields(currentCode.template).map(field => [
+        extractTemplateFields(currentCode.template).map((field) => [
           field,
-          currentCode[field as keyof FactCode] || ''
+          currentCode[field as keyof FactCode] || "",
         ])
       )
     );
-
     return (
-      <div 
+      <div
         className="bg-gray-50 p-4 rounded-md border border-gray-200"
         dangerouslySetInnerHTML={{ __html: template }}
       />
     );
   };
+
+  // Fast, case-insensitive search
+  const filteredFactCodes = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    if (!q) return factCodes;
+    return factCodes.filter(
+      (fc) =>
+        fc.code.toLowerCase().includes(q) ||
+        fc.description.toLowerCase().includes(q)
+    );
+  }, [factCodes, debouncedSearch]);
 
   if (authLoading) {
     return <div className="text-center py-8">Loading...</div>;
@@ -114,6 +137,12 @@ const AdminPanel: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <SearchInput
+        value={search}
+        onChange={setSearch}
+        placeholder="Zoek op code of beschrijving..."
+      />
 
       {currentCode && (
         <div className="bg-white p-6 rounded-lg shadow-md mb-6">
@@ -162,68 +191,12 @@ const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="text-center py-8">Bezig met laden...</div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Code
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Beschrijving
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acties
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {factCodes.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-6 py-4 text-center text-gray-500"
-                  >
-                    Geen feitcodes gevonden
-                  </td>
-                </tr>
-              ) : (
-                factCodes.map((code) => (
-                  <tr key={code.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {code.code}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {code.description}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-4">
-                        <button
-                          onClick={() => handleEdit(code)}
-                          className="text-blue-600 hover:text-blue-900"
-                          aria-label="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(code)}
-                          className="text-red-600 hover:text-red-900"
-                          aria-label="Delete"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <FactCodeTable
+        factCodes={filteredFactCodes}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        isLoading={isLoading}
+      />
     </div>
   );
 };

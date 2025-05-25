@@ -21,9 +21,11 @@ class FactCodeService {
   }
 
   async updateFactCode(id: string, updates: Partial<FactCode>): Promise<void> {
+    const payload = this.mapFactCodeToDatabase(updates);
+    console.log('Updating feitcodes:', { id, payload });
     const { error } = await supabase
       .from('feitcodes')
-      .update(this.mapFactCodeToDatabase(updates))
+      .update(payload)
       .eq('id', id);
 
     if (error) throw error;
@@ -49,9 +51,9 @@ class FactCodeService {
 
   private mapFactCodeToDatabase(factCode: Partial<FactCode>) {
     return {
-      ...(factCode.code && { factcode: factCode.code }),
-      ...(factCode.description && { description: factCode.description }),
-      ...(factCode.template && { template: factCode.template }),
+      ...(factCode.code !== undefined ? { factcode: factCode.code } : {}),
+      ...(factCode.description !== undefined ? { description: factCode.description } : {}),
+      ...(factCode.template !== undefined ? { template: factCode.template } : {}),
     };
   }
 }
