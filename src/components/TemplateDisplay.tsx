@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Copy, CheckCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { FactCode } from '../types/factCode';
-import EditableField from './EditableField';
+import { Button, Input } from './ui';
+import { useToast } from '../hooks/useToast';
+import { extractTemplateFields, replaceTemplateFields } from '../utils/templateUtils';
 
 interface TemplateDisplayProps {
   factCode: FactCode;
@@ -10,185 +11,131 @@ interface TemplateDisplayProps {
 
 const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
   const [copied, setCopied] = useState(false);
-  const [editableFields, setEditableFields] = useState<Record<string, string>>({});
-  const [displayText, setDisplayText] = useState('');
-  const [isHeld, setIsHeld] = useState(false); // Checkbox state
-  const [reason, setReason] = useState(''); // Reden als niet staande gehouden
-  const templateRef = useRef<HTMLDivElement>(null);
+  const [editableFields, setEditableFields] = useState<Record<string, string>>(
+    Object.fromEntries(extractTemplateFields(factCode.template).map(field => [field, '']))
+  );
+  const [isHeld, setIsHeld] = useState(false);
+  const [reason, setReason] = useState('');
+  const { showSuccess, showError } = useToast();
 
-  useEffect(() => {
-    const fieldRegex = /\{([^}]+)\}/g;
-    const fields: Record<string, string> = { ...editableFields }; // Behoud bestaande waarden
-    let match;
-
-    while ((match = fieldRegex.exec(factCode.template)) !== null) {
-      if (!(match[1] in fields)) {
-        fields[match[1]] = ''; // Voeg nieuwe velden toe zonder bestaande te overschrijven
-      }
-    }
-
-    setEditableFields(fields);
-    updateDisplayText(fields, isHeld, reason);
-  }, [factCode]);
-
-  const updateDisplayText = (fields: Record<string, string>, isHeld: boolean, reason: string) => {
-    let text = factCode.template;
-    Object.keys(fields).forEach(key => {
-      const value = fields[key] || `[${key}]`;
-      text = text.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
-    });
-
-    // Voeg het staande houden-gedeelte toe
+  const getDisplayText = (): string => {
+    const templateText = replaceTemplateFields(factCode.template, editableFields);
     const heldText = isHeld
-      ? 'Ik heb de persoon staande gehouden inzake feitcode ' + factCode.code + '.'
+      ? `Ik heb de persoon staande gehouden inzake feitcode ${factCode.code}.`
       : `Ik kon de persoon niet staande houden vanwege ${reason || '[reden]'}.`;
 
-    text += `\n\n${heldText}`;
-    setDisplayText(text);
+    return `${templateText}\n\n${heldText}`;
   };
 
   const handleFieldChange = (name: string, value: string) => {
-    const newFields = { ...editableFields, [name]: value };
-    setEditableFields(newFields);
-    updateDisplayText(newFields, isHeld, reason);
+    setEditableFields(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCopy = () => {
-    if (navigator.clipboard && displayText) {
-      navigator.clipboard.writeText(displayText)
-        .then(() => {
-          setCopied(true);
-          toast.success('Tekst gekopieerd naar klembord!');
-          setTimeout(() => setCopied(false), 2000);
-        })
-        .catch(() => {
-          toast.error('Kopiëren mislukt. Probeer het opnieuw.');
-        });
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(getDisplayText());
+      setCopied(true);
+      showSuccess('Tekst gekopieerd naar klembord!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      showError('Kopiëren mislukt. Probeer het opnieuw.');
+      console.error('Copy error:', error);
     }
   };
 
   return (
-    <>
-      <div className="template-container active" ref={templateRef}>
-        <div className="mb-4 pb-3 border-b border-gray-200">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800">{factCode.code}</h3>
-              <p className="text-gray-600">{factCode.description}</p>
+    <div className="bg-white p-6 rounded-lg shadow-md mt-4">
+      <div className="mb-4 pb-3 border-b border-gray-200">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-800">{factCode.code}</h3>
+            <p className="text-gray-600">{factCode.description}</p>
+          </div>
+          <Button
+            onClick={handleCopy}
+            variant="secondary"
+            icon={copied ? CheckCircle : Copy}
+            aria-label="Kopieer tekst"
+          >
+            {copied ? 'Gekopieerd' : 'Kopieer'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div>
+            <h4 className="text-md font-medium text-gray-700 mb-3">
+              Vul de ontbrekende gegevens in:
+            </h4>
+            <div className="space-y-3">
+              {Object.keys(editableFields).map((field) => (
+                <Input
+                  key={field}
+                  label={field}
+                  value={editableFields[field]}
+                  onChange={(e) => handleFieldChange(field, e.target.value)}
+                  placeholder={`Vul ${field.toLowerCase()} in...`}
+                />
+              ))}
             </div>
-            <button
-              onClick={handleCopy}
-              className="btn-secondary flex items-center space-x-1"
-              aria-label="Kopieer tekst"
-            >
-              {copied ? (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Gekopieerd</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  <span>Kopieer</span>
-                </>
-              )}
-            </button>
+          </div>
+
+          <div className="space-y-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={isHeld}
+                onChange={(e) => {
+                  setIsHeld(e.target.checked);
+                  if (e.target.checked) setReason('');
+                }}
+                className="form-checkbox"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Persoon staande gehouden
+              </span>
+            </label>
+
+            {!isHeld && (
+              <Input
+                label="Reden waarom persoon niet staande is gehouden"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="form-fields">
-            <h4 className="text-md font-medium text-gray-700 mb-3">Vul de ontbrekende gegevens in:</h4>
-            <div className="space-y-3">
-              {Object.keys(editableFields).map((field) => (
-                <div key={field} className="form-control">
-                  <label className="text-sm font-medium text-gray-600 mb-1 block">
-                    {field}:
-                  </label>
-                  <EditableField
-                    name={field}
-                    value={editableFields[field]}
-                    onChange={(value) => handleFieldChange(field, value)}
-                  />
-                </div>
+        <div>
+          <h4 className="text-md font-medium text-gray-700 mb-3">Resultaat:</h4>
+          <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+            <div className="text-gray-800 whitespace-pre-line">
+              {getDisplayText().split(/\[([^\]]+)\]/).map((part, index) => (
+                index % 2 === 1 ? (
+                  <span key={index} className="bg-yellow-100 text-yellow-800 px-1 rounded">
+                    [{part}]
+                  </span>
+                ) : (
+                  <span key={index}>{part}</span>
+                )
               ))}
-            </div>
-
-            <div className="mt-6">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={isHeld}
-                  onChange={(e) => {
-                    setIsHeld(e.target.checked);
-                    if (e.target.checked) setReason(''); // Reset reden als checkbox is aangevinkt
-                    updateDisplayText(editableFields, e.target.checked, reason);
-                  }}
-                  className="form-checkbox"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Persoon staande gehouden
-                </span>
-              </label>
-
-              {!isHeld && (
-                <div className="mt-4">
-                  <label className="text-sm font-medium text-gray-600 mb-1 block">
-                    Reden waarom persoon niet staande is gehouden:
-                  </label>
-                  <EditableField
-                    name="Reden"
-                    value={reason}
-                    onChange={(value) => {
-                      setReason(value);
-                      updateDisplayText(editableFields, isHeld, value);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="preview">
-            <h4 className="text-md font-medium text-gray-700 mb-3">Resultaat:</h4>
-            <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-              <div className="text-gray-800 whitespace-pre-line">
-                {displayText.split(/\[([^\]]+)\]/).map((part, index) => {
-                  if (index % 2 === 1) {
-                    return (
-                      <span key={index} className="bg-yellow-100 text-yellow-800 px-1 rounded">
-                        [{part}]
-                      </span>
-                    );
-                  }
-                  return <span key={index}>{part}</span>;
-                })}
-              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div className="fixed bottom-4 right-4">
-        <button
+        <Button
           onClick={handleCopy}
-          className="btn-primary flex items-center space-x-2 shadow-lg"
+          icon={copied ? CheckCircle : Copy}
+          className="shadow-lg"
           aria-label="Kopieer tekst (sticky)"
         >
-          {copied ? (
-            <>
-              <CheckCircle className="w-5 h-5" />
-              <span>Gekopieerd</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-5 h-5" />
-              <span>Kopieer tekst</span>
-            </>
-          )}
-        </button>
+          {copied ? 'Gekopieerd' : 'Kopieer tekst'}
+        </Button>
       </div>
-    </>
+    </div>
   );
 };
 

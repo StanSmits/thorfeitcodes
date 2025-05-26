@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, AlertCircle, X, Loader2 } from "lucide-react";
-import TemplateDisplay from "./TemplateDisplay";
-import { supabase } from "../supabaseClient";
+import { Search, AlertCircle, X, Loader2, Trash2 } from "lucide-react";
+import { supabase } from "../config/supabase";
 import { FactCode } from "../types/factCode";
+import { useToast } from "../hooks/useToast";
+import { Input, Button } from "./ui";
+import TemplateDisplay from "./TemplateDisplay";
 
 const SearchSection: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -13,6 +15,7 @@ const SearchSection: React.FC = () => {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { showError } = useToast();
 
   useEffect(() => {
     const savedSearches = localStorage.getItem("recentSearches");
@@ -28,12 +31,10 @@ const SearchSection: React.FC = () => {
     };
     
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchSuggestions = async () => {
       if (!searchTerm.trim() || selectedCode) {
         setSuggestions([]);
@@ -48,19 +49,12 @@ const SearchSection: React.FC = () => {
           .ilike("factcode", `%${searchTerm.toLowerCase()}%`)
           .limit(5);
 
-        if (error) {
-          console.error("Supabase error:", error);
-          setSuggestions([]);
-          return;
-        }
+        if (error) throw error;
 
-        const suggestionsData = data.map((item) => ({
-          code: item.factcode,
-        }));
-
-        setSuggestions(suggestionsData);
+        setSuggestions(data.map(item => ({ code: item.factcode })));
       } catch (error) {
         console.error("Error fetching suggestions:", error);
+        showError("Failed to fetch suggestions");
         setSuggestions([]);
       } finally {
         setIsLoading(false);
@@ -69,6 +63,7 @@ const SearchSection: React.FC = () => {
 
     const debounceTimer = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(debounceTimer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, selectedCode]);
 
   const fetchFactCodeDetails = async (code: string): Promise<FactCode | null> => {
@@ -80,14 +75,9 @@ const SearchSection: React.FC = () => {
         .eq("factcode", code)
         .single();
 
-        supabase.rpc('increment_access_count', { item_id: code }).then(({ data }) => {
-          console.log('Access count incremented:', data);
-        });
+      if (error) throw error;
 
-      if (error) {
-        console.error("Error fetching fact code details:", error);
-        return null;
-      }
+      await supabase.rpc('increment_access_count', { item_id: code });
 
       return {
         id: data.id,
@@ -97,6 +87,7 @@ const SearchSection: React.FC = () => {
       };
     } catch (error) {
       console.error("Error fetching fact code details:", error);
+      showError("Failed to fetch fact code details");
       return null;
     } finally {
       setIsLoadingDetails(false);
@@ -114,13 +105,17 @@ const SearchSection: React.FC = () => {
       setSelectedCode(factCode);
       setSearchTerm(factCode.code);
       setSuggestions([]);
-      const updatedSearches = [
-        factCode.code,
-        ...recentSearches.filter((s) => s !== factCode.code),
-      ].slice(0, 5);
-      setRecentSearches(updatedSearches);
-      localStorage.setItem("recentSearches", JSON.stringify(updatedSearches));
+      updateRecentSearches(factCode.code);
     }
+  };
+
+  const updateRecentSearches = (code: string) => {
+    const updatedSearches = [
+      code,
+      ...recentSearches.filter((s) => s !== code),
+    ].slice(0, 5);
+    setRecentSearches(updatedSearches);
+    localStorage.setItem("recentSearches", JSON.stringify(updatedSearches));
   };
 
   const handleClearSearch = () => {
@@ -130,31 +125,25 @@ const SearchSection: React.FC = () => {
     inputRef.current?.focus();
   };
 
-  const handleRecentSearch = async (code: string) => {
-    const factCode = await fetchFactCodeDetails(code);
-    if (factCode) {
-      handleSelectCode({ code: factCode.code });
-    }
-  };
-
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Sectie die groots in het rood aangeeft dat de website nog in BETA is en er fouten kunnen optreden / niet alles klopt */}
       <div className="bg-red-100 text-red-800 p-4 rounded-lg mb-6">
         <p className="text-sm text-center font-semibold">
           Deze website is nog in BETA. Er kunnen fouten optreden en niet alles
           klopt. Gebruik met voorzichtigheid!
         </p>
-        {/* Sectie, voor opmerkingen: contact met: stan.smits@amsterdam.nl met in de titel: FEITCODEZOEKER */}
         <p className="text-xs text-center mt-2">
           Voor opmerkingen of feedback, neem contact op met{" "}
           <a
             href="mailto:stan.smits@amsterdam.nl"
             className="text-red-600 hover:underline"
-          > stan.smits@amsterdam.nl </a>
+          >
+            stan.smits@amsterdam.nl
+          </a>
           {" "}met in de titel: FEITCODEZOEKER
         </p>
       </div>
+
       <div className="mb-6 text-center">
         <h2 className="text-xl font-bold text-gray-800 mb-2">
           Feitcode Zoeker
@@ -167,30 +156,33 @@ const SearchSection: React.FC = () => {
 
       <div ref={searchRef} className="search-input-container mb-6">
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
-            ) : (
-              <Search className="h-5 w-5 text-gray-400" />
-            )}
-          </div>
-          <input
+          <Input
             ref={inputRef}
             type="text"
             value={searchTerm}
             onChange={handleSearchChange}
-            className="input-primary pl-10 pr-10 py-3 text-lg shadow-sm"
+            className="pl-10 pr-10 py-3 text-lg shadow-sm"
             placeholder="Zoek op feitcode..."
             aria-label="Zoek feitcode"
+            prefix={
+              isLoading ? (
+                <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+              ) : (
+                <Search className="h-5 w-5 text-gray-400" />
+              )
+            }
+            suffix={
+              searchTerm && (
+                <Button
+                  variant="secondary"
+                  onClick={handleClearSearch}
+                  icon={X}
+                  className="p-1"
+                  aria-label="Clear search"
+                />
+              )
+            }
           />
-          {searchTerm && (
-            <button
-              onClick={handleClearSearch}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          )}
         </div>
 
         {suggestions.length > 0 && (
@@ -201,11 +193,9 @@ const SearchSection: React.FC = () => {
                 className="px-4 py-3 cursor-pointer hover:bg-gray-100 border-b border-gray-100 transition duration-200"
                 onClick={() => handleSelectCode(suggestion)}
               >
-                <div className="flex items-start">
-                  <span className="font-medium text-[#004699]">
-                    {suggestion.code}
-                  </span>
-                </div>
+                <span className="font-medium text-[#004699]">
+                  {suggestion.code}
+                </span>
               </div>
             ))}
           </div>
@@ -223,18 +213,31 @@ const SearchSection: React.FC = () => {
 
       {recentSearches.length > 0 && !selectedCode && (
         <div className="mb-6 mt-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">
-            Recent gezocht:
-          </h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Recente zoekopdrachten
+            </h3>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setRecentSearches([]);
+                localStorage.removeItem("recentSearches");
+              }}
+              icon={Trash2}
+              className="p-1"
+              aria-label="Verwijder recente zoekopdrachten"
+            />
+          </div>
           <div className="flex flex-wrap gap-2">
             {recentSearches.map((code) => (
-              <button
+              <Button
                 key={code}
-                onClick={() => handleRecentSearch(code)}
-                className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm hover:bg-gray-200 transition duration-300"
+                variant="secondary"
+                onClick={() => handleSelectCode({ code })}
+                className="text-sm"
               >
                 {code}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
