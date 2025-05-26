@@ -44,7 +44,7 @@ const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white p-6 rounded-lg shadow-md mt-4">
       <div className="mb-4 pb-3 border-b border-gray-200">
         <div className="flex justify-between items-start">
           <div>
