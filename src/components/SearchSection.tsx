@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, AlertCircle, X, Loader2, Trash2, Trash } from "lucide-react";
+import { Search, AlertCircle, X, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "../config/supabase";
 import { FactCode } from "../types/factCode";
 import { useToast } from "../hooks/useToast";
