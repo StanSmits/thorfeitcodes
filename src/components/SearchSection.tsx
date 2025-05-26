@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, AlertCircle, X, Loader2 } from "lucide-react";
+import { Search, AlertCircle, X, Loader2, Trash2, Trash } from "lucide-react";
 import { supabase } from "../config/supabase";
 import { FactCode } from "../types/factCode";
 import { useToast } from "../hooks/useToast";
@@ -213,9 +213,21 @@ const SearchSection: React.FC = () => {
 
       {recentSearches.length > 0 && !selectedCode && (
         <div className="mb-6 mt-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">
-            Recent gezocht:
-          </h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Recente zoekopdrachten
+            </h3>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setRecentSearches([]);
+                localStorage.removeItem("recentSearches");
+              }}
+              icon={Trash2}
+              className="p-1"
+              aria-label="Verwijder recente zoekopdrachten"
+            />
+          </div>
           <div className="flex flex-wrap gap-2">
             {recentSearches.map((code) => (
               <Button
