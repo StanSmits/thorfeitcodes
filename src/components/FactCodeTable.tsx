@@ -1,6 +1,7 @@
 import React from "react";
 import { Edit, Trash } from "lucide-react";
 import { FactCode } from "../types/factCode";
+import { Button } from "./ui/Button";
 
 interface FactCodeTableProps {
   factCodes: FactCode[];
@@ -54,20 +55,24 @@ const FactCodeTable: React.FC<FactCodeTableProps> = ({
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex justify-end space-x-4">
-                  <button
+                  <Button
+                    variant="secondary"
+                    type="button"
                     onClick={() => onEdit(code)}
-                    className="text-blue-600 hover:text-blue-900"
+                    className="text-gray-500 hover:text-gray-900"
                     aria-label="Edit"
                   >
                     <Edit className="w-4 h-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    type="button"
                     onClick={() => onDelete(code)}
                     className="text-red-600 hover:text-red-900"
                     aria-label="Delete"
                   >
                     <Trash className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </td>
             </tr>
