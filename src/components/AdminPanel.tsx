@@ -2,12 +2,14 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FactCode } from "../types/factCode";
+import { FactCodeSuggestion } from "../types/factCode";
 import { useAuth } from "../hooks/useAuth";
 import { useFactCodes } from "../hooks/useFactCodes";
 import { Button, Input, TextArea } from "./ui";
 import { highlightTemplateFields } from "../utils/templateUtils";
 import FactCodeTable from "./FactCodeTable";
 import SearchInput from "./SearchInput";
+import { factCodeSuggestionService } from "../services/factCodeSuggestionService";
 
 const DEBOUNCE_MS = 250;
 
@@ -16,6 +18,9 @@ const AdminPanel: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<'factcodes' | 'suggestions'>('factcodes');
+  const [suggestions, setSuggestions] = useState<FactCodeSuggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const {
     isLoading,
@@ -42,6 +47,17 @@ const AdminPanel: React.FC = () => {
     fetchFactCodes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isAuthenticated, navigate]);
+
+  // Fetch suggestions for the suggestions tab
+  useEffect(() => {
+    if (activeTab === 'suggestions') {
+      setIsLoadingSuggestions(true);
+      factCodeSuggestionService.fetchSuggestions()
+        .then(setSuggestions)
+        .catch(() => setSuggestions([]))
+        .finally(() => setIsLoadingSuggestions(false));
+    }
+  }, [activeTab]);
 
   // Save handler with refresh
   const handleSave = async () => {
@@ -92,16 +108,9 @@ const AdminPanel: React.FC = () => {
     return (
       <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-gray-800 whitespace-pre-line">
         {parts.map((part, idx) =>
-          typeof part === "string" ? (
-            <span key={idx}>{part}</span>
-          ) : (
-            <span
-              key={idx}
-              className="bg-yellow-100 text-yellow-800 px-1 rounded"
-            >
-              {"{" + part.field + "}"}
-            </span>
-          )
+          typeof part === "string"
+            ? React.createElement('span', { key: idx }, part)
+            : React.createElement('span', { key: idx, className: "bg-yellow-100 text-yellow-800 px-1 rounded" }, `{${part.field}}`)
         )}
       </div>
     );
@@ -118,6 +127,64 @@ const AdminPanel: React.FC = () => {
     );
   }, [factCodes, debouncedSearch]);
 
+  const handleApproveSuggestion = async (suggestion: FactCodeSuggestion) => {
+    // Add as new fact code, then mark suggestion as accepted
+    try {
+      await addFactCode({
+        code: suggestion.suggested_code,
+        description: suggestion.description,
+        template: suggestion.template,
+      });
+      await factCodeSuggestionService.updateSuggestionStatus(suggestion.id!, 'accepted');
+      setSuggestions((prev) => prev.map(s => s.id === suggestion.id ? { ...s, status: 'accepted' } : s));
+      fetchFactCodes();
+    } catch (err) {
+      // Optionally show error toast
+      console.error(err);
+    }
+  };
+
+  const handleDeleteSuggestion = async (id: string) => {
+    if (!window.confirm('Weet je zeker dat je deze suggestie wilt verwijderen?')) return;
+    try {
+      await factCodeSuggestionService.deleteSuggestion(id);
+      setSuggestions((prev) => prev.filter(s => s.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const [editingSuggestion, setEditingSuggestion] = useState<FactCodeSuggestion | null>(null);
+  const [editForm, setEditForm] = useState({ suggested_code: '', description: '', template: '' });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const openEditModal = (s: FactCodeSuggestion) => {
+    setEditingSuggestion(s);
+    setEditForm({
+      suggested_code: s.suggested_code,
+      description: s.description,
+      template: s.template,
+    });
+  };
+
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  const saveEditSuggestion = async () => {
+    if (!editingSuggestion) return;
+    setIsSavingEdit(true);
+    try {
+      await factCodeSuggestionService.updateSuggestion(editingSuggestion.id!, editForm);
+      setSuggestions((prev) => prev.map(s => s.id === editingSuggestion.id ? { ...s, ...editForm } : s));
+      setEditingSuggestion(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   if (authLoading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -131,6 +198,7 @@ const AdminPanel: React.FC = () => {
             onClick={() => {
               setCurrentCode({ id: "", code: "", description: "", template: "" });
               setIsEditing(false);
+              setActiveTab('factcodes');
             }}
             icon={Plus}
           >
@@ -142,65 +210,187 @@ const AdminPanel: React.FC = () => {
         </div>
       </div>
 
-      <SearchInput
-        value={search}
-        onChange={setSearch}
-        placeholder="Zoek op code of beschrijving..."
-      />
+      {/* Tabs */}
+      <div className="flex gap-4 mb-6 border-b">
+        <button
+          className={`px-4 py-2 font-medium ${activeTab === 'factcodes' ? 'border-b-2 border-[#ec0000] text-[#ec0000]' : 'text-gray-600'}`}
+          onClick={() => setActiveTab('factcodes')}
+        >
+          Feitcodes beheren
+        </button>
+        <button
+          className={`px-4 py-2 font-medium ${activeTab === 'suggestions' ? 'border-b-2 border-[#ec0000] text-[#ec0000]' : 'text-gray-600'}`}
+          onClick={() => setActiveTab('suggestions')}
+        >
+          Suggesties
+        </button>
+      </div>
 
-      {currentCode && (
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-          <div className="grid gap-4">
-            <Input
-              label="Code"
-              value={currentCode.code}
-              onChange={(e) => handleFieldChange("code", e.target.value)}
-            />
-            <Input
-              label="Beschrijving"
-              value={currentCode.description}
-              onChange={(e) => handleFieldChange("description", e.target.value)}
-            />
-            <TextArea
-              label="Template"
-              value={currentCode.template}
-              onChange={(e) => handleFieldChange("template", e.target.value)}
-              className="h-32"
-            />
-            <div>
-              <h4 className="text-md font-medium text-gray-700 mb-3">
-                Template Preview:
-              </h4>
-              {renderTemplatePreview()}
+      {activeTab === 'factcodes' && (
+        <>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Zoek op code of beschrijving..."
+          />
+
+          {currentCode && (
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+              <div className="grid gap-4">
+                <Input
+                  label="Code"
+                  value={currentCode.code}
+                  onChange={(e) => handleFieldChange("code", e.target.value)}
+                />
+                <Input
+                  label="Beschrijving"
+                  value={currentCode.description}
+                  onChange={(e) => handleFieldChange("description", e.target.value)}
+                />
+                <TextArea
+                  label="Template"
+                  value={currentCode.template}
+                  onChange={(e) => handleFieldChange("template", e.target.value)}
+                  className="h-32"
+                />
+                <div>
+                  <h4 className="text-md font-medium text-gray-700 mb-3">
+                    Template Preview:
+                  </h4>
+                  {renderTemplatePreview()}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setCurrentCode(null)}
+                  >
+                    Annuleren
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={
+                      !currentCode.code ||
+                      !currentCode.description ||
+                      !currentCode.template
+                    }
+                  >
+                    {isEditing ? "Opslaan" : "Toevoegen"}
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setCurrentCode(null)}
-              >
-                Annuleren
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={
-                  !currentCode.code ||
-                  !currentCode.description ||
-                  !currentCode.template
-                }
-              >
-                {isEditing ? "Opslaan" : "Toevoegen"}
-              </Button>
-            </div>
-          </div>
-        </div>
+          )}
+
+          <FactCodeTable
+            factCodes={filteredFactCodes}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            isLoading={isLoading}
+          />
+        </>
       )}
 
-      <FactCodeTable
-        factCodes={filteredFactCodes}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        isLoading={isLoading}
-      />
+      {activeTab === 'suggestions' && (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-bold mb-4">Ingestuurde Suggesties</h2>
+          {isLoadingSuggestions ? (
+            <div>Bezig met laden...</div>
+          ) : suggestions.length === 0 ? (
+            <div className="text-gray-500">Geen suggesties gevonden.</div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Beschrijving</th>
+                  {/* <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Template</th> */}
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Acties</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {suggestions.map((s) => (
+                  <tr key={s.id}>
+                    <td className="px-4 py-2 font-mono">{s.suggested_code}</td>
+                    <td className="px-4 py-2">{s.description}</td>
+                    {/* <td className="px-4 py-2 whitespace-pre-line text-xs text-gray-600">{s.template}</td> */}
+                    <td className="px-4 py-2 text-xs">{s.status || 'pending'}</td>
+                    <td className="px-4 py-2 text-right flex gap-2 justify-end">
+                      <Button
+                        variant="primary"
+                        onClick={() => handleApproveSuggestion(s)}
+                        disabled={s.status === 'accepted'}
+                      >
+                        Goedkeuren
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => openEditModal(s)}
+                      >
+                        Aanpassen
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleDeleteSuggestion(s.id!)}
+                      >
+                        Verwijderen
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {/* Edit Suggestion Modal */}
+          {editingSuggestion && (
+            <div className="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center">
+              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700" onClick={() => setEditingSuggestion(null)}>&times;</button>
+                <h2 className="text-lg font-bold mb-4">Suggestie aanpassen</h2>
+                <div className="space-y-3">
+                  <Input
+                    label="Voorgestelde code"
+                    name="suggested_code"
+                    value={editForm.suggested_code}
+                    onChange={handleEditFormChange}
+                    required
+                  />
+                  <Input
+                    label="Beschrijving"
+                    name="description"
+                    value={editForm.description}
+                    onChange={handleEditFormChange}
+                    required
+                  />
+                  <TextArea
+                    label="Reden van Wetenschap"
+                    name="template"
+                    value={editForm.template}
+                    onChange={handleEditFormChange}
+                  />
+                  <div>
+                    <h4 className="text-md font-medium text-gray-700 mb-2">Preview:</h4>
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200 text-gray-800 whitespace-pre-line">
+                      {(() => {
+                        const parts = highlightTemplateFields(editForm.template);
+                        return parts.map((part, idx) =>
+                          typeof part === "string"
+                            ? React.createElement('span', { key: idx }, part)
+                            : React.createElement('span', { key: idx, className: "bg-yellow-100 text-yellow-800 px-1 rounded" }, `{${part.field}}`)
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="secondary" type="button" onClick={() => setEditingSuggestion(null)}>Annuleren</Button>
+                    <Button type="button" onClick={saveEditSuggestion} isLoading={isSavingEdit}>Opslaan</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
