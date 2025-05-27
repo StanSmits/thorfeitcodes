@@ -60,7 +60,7 @@ const SuggestionModal: React.FC<{
             required
           />
           <TextArea
-            label="Template (optioneel)"
+            label="Reden van Wetenschap (optioneel)"
             name="template"
             value={form.template}
             onChange={handleChange}
