@@ -1,10 +1,79 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, AlertCircle, X, Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "../config/supabase";
 import { FactCode } from "../types/factCode";
 import { useToast } from "../hooks/useToast";
-import { Input, Button } from "./ui";
+import { Input, Button, TextArea } from "./ui";
 import TemplateDisplay from "./TemplateDisplay";
+import { factCodeSuggestionService } from "../services/factCodeSuggestionService";
+
+const SuggestionModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+}> = ({ open, onClose }) => {
+  const [form, setForm] = useState({
+    suggested_code: "",
+    description: "",
+    template: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showSuccess, showError } = useToast();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await factCodeSuggestionService.addSuggestion(form);
+      showSuccess("Suggestie ingestuurd! Dank je wel.");
+      setForm({ suggested_code: "", description: "", template: "" });
+      onClose();
+    } catch {
+      showError("Suggestie kon niet worden ingestuurd.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+        <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700" onClick={onClose}>&times;</button>
+        <h2 className="text-lg font-bold mb-4">Stel een nieuwe feitcode voor</h2>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <Input
+            label="Voorgestelde code"
+            name="suggested_code"
+            value={form.suggested_code}
+            onChange={handleChange}
+            required
+          />
+          <Input
+            label="Beschrijving"
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            required
+          />
+          <TextArea
+            label="Reden van Wetenschap (optioneel)"
+            name="template"
+            value={form.template}
+            onChange={handleChange}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" type="button" onClick={onClose}>Annuleren</Button>
+            <Button type="submit" isLoading={isSubmitting}>Verstuur suggestie</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 const SearchSection: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -13,6 +82,7 @@ const SearchSection: React.FC = () => {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { showError } = useToast();
@@ -51,7 +121,7 @@ const SearchSection: React.FC = () => {
 
         if (error) throw error;
 
-        setSuggestions(data.map(item => ({ code: item.factcode })));
+        setSuggestions(data.map(item => ({ code: item.factcode, description: '', template: '' })));
       } catch (error) {
         console.error("Error fetching suggestions:", error);
         showError("Failed to fetch suggestions");
@@ -118,13 +188,6 @@ const SearchSection: React.FC = () => {
     localStorage.setItem("recentSearches", JSON.stringify(updatedSearches));
   };
 
-  const handleClearSearch = () => {
-    setSearchTerm("");
-    setSuggestions([]);
-    setSelectedCode(null);
-    inputRef.current?.focus();
-  };
-
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-red-100 text-red-800 p-4 rounded-lg mb-6">
@@ -157,31 +220,12 @@ const SearchSection: React.FC = () => {
       <div ref={searchRef} className="search-input-container mb-6">
         <div className="relative">
           <Input
-            ref={inputRef}
             type="text"
             value={searchTerm}
             onChange={handleSearchChange}
             className="pl-10 pr-10 py-3 text-lg shadow-sm"
             placeholder="Zoek op feitcode..."
             aria-label="Zoek feitcode"
-            prefix={
-              isLoading ? (
-                <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
-              ) : (
-                <Search className="h-5 w-5 text-gray-400" />
-              )
-            }
-            suffix={
-              searchTerm && (
-                <Button
-                  variant="secondary"
-                  onClick={handleClearSearch}
-                  icon={X}
-                  className="p-1"
-                  aria-label="Clear search"
-                />
-              )
-            }
           />
         </div>
 
@@ -206,6 +250,12 @@ const SearchSection: React.FC = () => {
             <div className="flex flex-col items-center text-gray-600">
               <AlertCircle className="h-6 w-6 mb-2 text-gray-400" />
               <p>Geen feitcodes gevonden voor &quot;{searchTerm}&quot;</p>
+              <Button
+                className="mt-3"
+                onClick={() => setShowSuggestionModal(true)}
+              >
+                Stel een nieuwe feitcode voor
+              </Button>
             </div>
           </div>
         )}
@@ -250,6 +300,8 @@ const SearchSection: React.FC = () => {
       ) : (
         selectedCode && <TemplateDisplay factCode={selectedCode} />
       )}
+
+      <SuggestionModal open={showSuggestionModal} onClose={() => setShowSuggestionModal(false)} />
     </div>
   );
 };
