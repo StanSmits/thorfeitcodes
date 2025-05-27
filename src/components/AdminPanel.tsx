@@ -295,7 +295,7 @@ const AdminPanel: React.FC = () => {
           <h2 className="text-lg font-bold mb-4">Ingestuurde Suggesties</h2>
           {isLoadingSuggestions ? (
             <div>Bezig met laden...</div>
-          ) : suggestions.length === 0 ? (
+          ) : suggestions.filter((s) => s.status !== 'accepted').length === 0 ? (
             <div className="text-gray-500">Geen suggesties gevonden.</div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
@@ -303,17 +303,17 @@ const AdminPanel: React.FC = () => {
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Beschrijving</th>
-                  {/* <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Template</th> */}
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Acties</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {suggestions.map((s) => (
+                {suggestions
+                  .filter((s) => s.status !== 'accepted')
+                  .map((s) => (
                   <tr key={s.id}>
                     <td className="px-4 py-2 font-mono">{s.suggested_code}</td>
                     <td className="px-4 py-2">{s.description}</td>
-                    {/* <td className="px-4 py-2 whitespace-pre-line text-xs text-gray-600">{s.template}</td> */}
                     <td className="px-4 py-2 text-xs">{s.status || 'pending'}</td>
                     <td className="px-4 py-2 text-right flex gap-2 justify-end">
                       <Button
