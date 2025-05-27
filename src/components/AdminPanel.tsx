@@ -175,9 +175,14 @@ const AdminPanel: React.FC = () => {
     if (!editingSuggestion) return;
     setIsSavingEdit(true);
     try {
-      await factCodeSuggestionService.updateSuggestion(editingSuggestion.id!, editForm);
-      setSuggestions((prev) => prev.map(s => s.id === editingSuggestion.id ? { ...s, ...editForm } : s));
+      handleApproveSuggestion({
+        ...editingSuggestion,
+        suggested_code: editForm.suggested_code,
+        description: editForm.description,
+        template: editForm.template,
+      });
       setEditingSuggestion(null);
+      setEditForm({ suggested_code: '', description: '', template: '' });
     } catch (err) {
       console.error(err);
     } finally {
@@ -318,16 +323,9 @@ const AdminPanel: React.FC = () => {
                     <td className="px-4 py-2 text-right flex gap-2 justify-end">
                       <Button
                         variant="primary"
-                        onClick={() => handleApproveSuggestion(s)}
-                        disabled={s.status === 'accepted'}
-                      >
-                        Goedkeuren
-                      </Button>
-                      <Button
-                        variant="secondary"
                         onClick={() => openEditModal(s)}
                       >
-                        Aanpassen
+                        Controleren
                       </Button>
                       <Button
                         variant="secondary"
@@ -383,7 +381,7 @@ const AdminPanel: React.FC = () => {
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="secondary" type="button" onClick={() => setEditingSuggestion(null)}>Annuleren</Button>
-                    <Button type="button" onClick={saveEditSuggestion} isLoading={isSavingEdit}>Opslaan</Button>
+                    <Button type="button" onClick={saveEditSuggestion} isLoading={isSavingEdit}>Goedkeuren en inboeken</Button>
                   </div>
                 </div>
               </div>
