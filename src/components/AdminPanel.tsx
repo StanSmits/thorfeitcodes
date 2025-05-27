@@ -18,7 +18,9 @@ const AdminPanel: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<'factcodes' | 'suggestions'>('factcodes');
+  const [activeTab, setActiveTab] = useState<"factcodes" | "suggestions">(
+    "factcodes"
+  );
   const [suggestions, setSuggestions] = useState<FactCodeSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
@@ -50,9 +52,10 @@ const AdminPanel: React.FC = () => {
 
   // Fetch suggestions for the suggestions tab
   useEffect(() => {
-    if (activeTab === 'suggestions') {
+    if (activeTab === "suggestions") {
       setIsLoadingSuggestions(true);
-      factCodeSuggestionService.fetchSuggestions()
+      factCodeSuggestionService
+        .fetchSuggestions()
         .then(setSuggestions)
         .catch(() => setSuggestions([]))
         .finally(() => setIsLoadingSuggestions(false));
@@ -61,7 +64,8 @@ const AdminPanel: React.FC = () => {
 
   // Save handler with refresh
   const handleSave = async () => {
-    if (!currentCode?.code || !currentCode.description || !currentCode.template) return;
+    if (!currentCode?.code || !currentCode.description || !currentCode.template)
+      return;
     try {
       if (isEditing && currentCode.id) {
         await updateFactCode(currentCode.id, currentCode);
@@ -84,7 +88,10 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleDelete = async (code: FactCode) => {
-    if (!code.id || !window.confirm("Weet je zeker dat je deze feitcode wilt verwijderen?")) {
+    if (
+      !code.id ||
+      !window.confirm("Weet je zeker dat je deze feitcode wilt verwijderen?")
+    ) {
       return;
     }
     try {
@@ -109,8 +116,15 @@ const AdminPanel: React.FC = () => {
       <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-gray-800 whitespace-pre-line">
         {parts.map((part, idx) =>
           typeof part === "string"
-            ? React.createElement('span', { key: idx }, part)
-            : React.createElement('span', { key: idx, className: "bg-yellow-100 text-yellow-800 px-1 rounded" }, `{${part.field}}`)
+            ? React.createElement("span", { key: idx }, part)
+            : React.createElement(
+                "span",
+                {
+                  key: idx,
+                  className: "bg-yellow-100 text-yellow-800 px-1 rounded",
+                },
+                `{${part.field}}`
+              )
         )}
       </div>
     );
@@ -135,8 +149,15 @@ const AdminPanel: React.FC = () => {
         description: suggestion.description,
         template: suggestion.template,
       });
-      await factCodeSuggestionService.updateSuggestionStatus(suggestion.id!, 'accepted');
-      setSuggestions((prev) => prev.map(s => s.id === suggestion.id ? { ...s, status: 'accepted' } : s));
+      await factCodeSuggestionService.updateSuggestionStatus(
+        suggestion.id!,
+        "accepted"
+      );
+      setSuggestions((prev) =>
+        prev.map((s) =>
+          s.id === suggestion.id ? { ...s, status: "accepted" } : s
+        )
+      );
       fetchFactCodes();
     } catch (err) {
       // Optionally show error toast
@@ -145,17 +166,25 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleDeleteSuggestion = async (id: string) => {
-    if (!window.confirm('Weet je zeker dat je deze suggestie wilt verwijderen?')) return;
+    if (
+      !window.confirm("Weet je zeker dat je deze suggestie wilt verwijderen?")
+    )
+      return;
     try {
       await factCodeSuggestionService.deleteSuggestion(id);
-      setSuggestions((prev) => prev.filter(s => s.id !== id));
+      setSuggestions((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       console.error(err);
     }
   };
 
-  const [editingSuggestion, setEditingSuggestion] = useState<FactCodeSuggestion | null>(null);
-  const [editForm, setEditForm] = useState({ suggested_code: '', description: '', template: '' });
+  const [editingSuggestion, setEditingSuggestion] =
+    useState<FactCodeSuggestion | null>(null);
+  const [editForm, setEditForm] = useState({
+    suggested_code: "",
+    description: "",
+    template: "",
+  });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const openEditModal = (s: FactCodeSuggestion) => {
@@ -167,7 +196,9 @@ const AdminPanel: React.FC = () => {
     });
   };
 
-  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleEditFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setEditForm({ ...editForm, [e.target.name]: e.target.value });
   };
 
@@ -182,7 +213,7 @@ const AdminPanel: React.FC = () => {
         template: editForm.template,
       });
       setEditingSuggestion(null);
-      setEditForm({ suggested_code: '', description: '', template: '' });
+      setEditForm({ suggested_code: "", description: "", template: "" });
     } catch (err) {
       console.error(err);
     } finally {
@@ -201,9 +232,14 @@ const AdminPanel: React.FC = () => {
         <div className="flex gap-4">
           <Button
             onClick={() => {
-              setCurrentCode({ id: "", code: "", description: "", template: "" });
+              setCurrentCode({
+                id: "",
+                code: "",
+                description: "",
+                template: "",
+              });
               setIsEditing(false);
-              setActiveTab('factcodes');
+              setActiveTab("factcodes");
             }}
             icon={Plus}
           >
@@ -218,20 +254,28 @@ const AdminPanel: React.FC = () => {
       {/* Tabs */}
       <div className="flex gap-4 mb-6 border-b">
         <button
-          className={`px-4 py-2 font-medium ${activeTab === 'factcodes' ? 'border-b-2 border-[#ec0000] text-[#ec0000]' : 'text-gray-600'}`}
-          onClick={() => setActiveTab('factcodes')}
+          className={`px-4 py-2 font-medium ${
+            activeTab === "factcodes"
+              ? "border-b-2 border-[#ec0000] text-[#ec0000]"
+              : "text-gray-600"
+          }`}
+          onClick={() => setActiveTab("factcodes")}
         >
           Feitcodes beheren
         </button>
         <button
-          className={`px-4 py-2 font-medium ${activeTab === 'suggestions' ? 'border-b-2 border-[#ec0000] text-[#ec0000]' : 'text-gray-600'}`}
-          onClick={() => setActiveTab('suggestions')}
+          className={`px-4 py-2 font-medium ${
+            activeTab === "suggestions"
+              ? "border-b-2 border-[#ec0000] text-[#ec0000]"
+              : "text-gray-600"
+          }`}
+          onClick={() => setActiveTab("suggestions")}
         >
           Suggesties
         </button>
       </div>
 
-      {activeTab === 'factcodes' && (
+      {activeTab === "factcodes" && (
         <>
           <SearchInput
             value={search}
@@ -250,12 +294,16 @@ const AdminPanel: React.FC = () => {
                 <Input
                   label="Beschrijving"
                   value={currentCode.description}
-                  onChange={(e) => handleFieldChange("description", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("description", e.target.value)
+                  }
                 />
                 <TextArea
                   label="Template"
                   value={currentCode.template}
-                  onChange={(e) => handleFieldChange("template", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("template", e.target.value)
+                  }
                   className="h-32"
                 />
                 <div>
@@ -295,97 +343,124 @@ const AdminPanel: React.FC = () => {
         </>
       )}
 
-      {activeTab === 'suggestions' && (
+      {activeTab === "suggestions" && (
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-lg font-bold mb-4">Ingestuurde Suggesties</h2>
+
+          {editingSuggestion && (
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6 border border-[#ec0000]/20">
+              <div className="grid gap-4">
+                <Input
+                  label="Voorgestelde code"
+                  name="suggested_code"
+                  value={editForm.suggested_code}
+                  onChange={handleEditFormChange}
+                  required
+                />
+                <Input
+                  label="Beschrijving"
+                  name="description"
+                  value={editForm.description}
+                  onChange={handleEditFormChange}
+                  required
+                />
+                <TextArea
+                  label="Reden van Wetenschap"
+                  name="template"
+                  value={editForm.template}
+                  onChange={handleEditFormChange}
+                />
+                <div>
+                  <h4 className="text-md font-medium text-gray-700 mb-3">
+                    Preview:
+                  </h4>
+                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-gray-800 whitespace-pre-line">
+                    {highlightTemplateFields(editForm.template).map(
+                      (part, idx) =>
+                        typeof part === "string" ? (
+                          <span key={idx}>{part}</span>
+                        ) : (
+                          <span
+                            key={idx}
+                            className="bg-yellow-100 text-yellow-800 px-1 rounded"
+                          >{`{${part.field}}`}</span>
+                        )
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => setEditingSuggestion(null)}
+                  >
+                    Annuleren
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={saveEditSuggestion}
+                    isLoading={isSavingEdit}
+                  >
+                    Goedkeuren en inboeken
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isLoadingSuggestions ? (
             <div>Bezig met laden...</div>
-          ) : suggestions.filter((s) => s.status !== 'accepted').length === 0 ? (
+          ) : suggestions.filter((s) => s.status !== "accepted").length ===
+            0 ? (
             <div className="text-gray-500">Geen suggesties gevonden.</div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Beschrijving</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Acties</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Code
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Beschrijving
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Acties
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {suggestions
-                  .filter((s) => s.status !== 'accepted')
+                  .filter((s) => s.status !== "accepted")
                   .map((s) => (
-                  <tr key={s.id}>
-                    <td className="px-4 py-2 font-mono">{s.suggested_code}</td>
-                    <td className="px-4 py-2">{s.description}</td>
-                    <td className="px-4 py-2 text-xs">{s.status || 'pending'}</td>
-                    <td className="px-4 py-2 text-right flex gap-2 justify-end">
-                      <Button
-                        variant="primary"
-                        onClick={() => openEditModal(s)}
-                      >
-                        Controleren
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => handleDeleteSuggestion(s.id!)}
-                      >
-                        Verwijderen
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                    <tr key={s.id}>
+                      <td className="px-4 py-2 font-mono">
+                        {s.suggested_code}
+                      </td>
+                      <td className="px-4 py-2">{s.description}</td>
+                      <td className="px-4 py-2 text-xs">
+                        {s.status || "pending"}
+                      </td>
+                      <td className="px-4 py-2 text-right flex gap-2 justify-end">
+                        <Button
+                          variant="primary"
+                          onClick={() => openEditModal(s)}
+                        >
+                          Controleren
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => handleDeleteSuggestion(s.id!)}
+                        >
+                          Verwijderen
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
-          )}
-          {/* Edit Suggestion Modal */}
-          {editingSuggestion && (
-            <div className="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center">
-              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative max-h-screen overflow-y-auto">
-                <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700" onClick={() => setEditingSuggestion(null)}>&times;</button>
-                <h2 className="text-lg font-bold mb-4">Suggestie aanpassen</h2>
-                <div className="space-y-3">
-                  <Input
-                    label="Voorgestelde code"
-                    name="suggested_code"
-                    value={editForm.suggested_code}
-                    onChange={handleEditFormChange}
-                    required
-                  />
-                  <Input
-                    label="Beschrijving"
-                    name="description"
-                    value={editForm.description}
-                    onChange={handleEditFormChange}
-                    required
-                  />
-                  <TextArea
-                    label="Reden van Wetenschap"
-                    name="template"
-                    value={editForm.template}
-                    onChange={handleEditFormChange}
-                  />
-                  <div>
-                    <h4 className="text-md font-medium text-gray-700 mb-2">Preview:</h4>
-                    <div className="bg-gray-50 p-3 rounded border border-gray-200 text-gray-800 whitespace-pre-line">
-                      {(() => {
-                        const parts = highlightTemplateFields(editForm.template);
-                        return parts.map((part, idx) =>
-                          typeof part === "string"
-                            ? React.createElement('span', { key: idx }, part)
-                            : React.createElement('span', { key: idx, className: "bg-yellow-100 text-yellow-800 px-1 rounded" }, `{${part.field}}`)
-                        );
-                      })()}
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="secondary" type="button" onClick={() => setEditingSuggestion(null)}>Annuleren</Button>
-                    <Button type="button" onClick={saveEditSuggestion} isLoading={isSavingEdit}>Goedkeuren en inboeken</Button>
-                  </div>
-                </div>
-              </div>
-            </div>
           )}
         </div>
       )}
