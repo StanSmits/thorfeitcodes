@@ -206,7 +206,7 @@ const AdminPanel: React.FC = () => {
     if (!editingSuggestion) return;
     setIsSavingEdit(true);
     try {
-      handleApproveSuggestion({
+      await handleApproveSuggestion({
         ...editingSuggestion,
         suggested_code: editForm.suggested_code,
         description: editForm.description,
