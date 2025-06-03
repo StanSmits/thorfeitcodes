@@ -5,7 +5,8 @@ class FactCodeService {
   async fetchFactCodes(): Promise<FactCode[]> {
     const { data, error } = await supabase
       .from('feitcodes')
-      .select('id, factcode, description, template');
+      .select('id, factcode, description, template')
+      .order('factcode', { ascending: true });
 
     if (error) throw error;
 
