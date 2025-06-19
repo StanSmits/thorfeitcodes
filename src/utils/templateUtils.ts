@@ -43,10 +43,29 @@ export function highlightTemplateFields(template: string) {
 
 // Parse checkbox options from field names like "zijn/haar" or "linker-/rechterhand"
 export const parseCheckboxOptions = (fieldName: string): string[] => {
-  // Check if field contains options separated by /
-  if (fieldName.includes('/')) {
-    return fieldName.split('/').map(option => option.trim());
+  // Handle special cases with proper mapping
+  const optionMappings: Record<string, string[]> = {
+    'zijn/haar': ['zijn', 'haar'],
+    'linker-/rechterhand': ['linkerhand', 'rechterhand'],
+    'links/rechts': ['links', 'rechts'],
+    'voor/achter': ['voor', 'achter'],
+    'ja/nee': ['ja', 'nee'],
+    'wel/niet': ['wel', 'niet']
+  };
+
+  // Check if we have a predefined mapping
+  if (optionMappings[fieldName]) {
+    return optionMappings[fieldName];
   }
+
+  // Fallback to splitting by / for other cases
+  if (fieldName.includes('/')) {
+    return fieldName.split('/').map(option => {
+      // Clean up options by removing trailing dashes and trimming
+      return option.replace(/-$/, '').trim();
+    });
+  }
+  
   return [];
 };
 
