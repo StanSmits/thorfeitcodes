@@ -12,7 +12,6 @@ interface TemplateDisplayProps {
 const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
   const [copied, setCopied] = useState(false);
   const templateFields = extractTemplateFields(factCode.template);
-  console.log('feitcode:', factCode);
   const fieldOptions = factCode.field_options || getDefaultFieldOptions(factCode.template);
   
   const [editableFields, setEditableFields] = useState<Record<string, string>>(
@@ -49,8 +48,6 @@ const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
 
   const renderField = (field: string) => {
     const fieldConfig = fieldOptions[field];
-
-    console.log('Rendering field:', field, 'Config:', fieldConfig);
     
     if (fieldConfig?.type === 'checkbox' && fieldConfig.options) {
       return (
