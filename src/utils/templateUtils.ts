@@ -1,3 +1,5 @@
+import { FieldOptions } from '../types/factCode';
+
 export const extractTemplateFields = (template: string): string[] => {
   const fieldRegex = /\{([^}]+)\}/g;
   const fields = new Set<string>();
@@ -38,3 +40,58 @@ export function highlightTemplateFields(template: string) {
   }
   return parts;
 }
+
+// Parse checkbox options from field names like "zijn/haar" or "linker-/rechterhand"
+export const parseCheckboxOptions = (fieldName: string): string[] => {
+  // Handle special cases with proper mapping
+  const optionMappings: Record<string, string[]> = {
+    'zijn/haar': ['zijn', 'haar'],
+    'linker-/rechterhand': ['linkerhand', 'rechterhand'],
+    'links/rechts': ['links', 'rechts'],
+    'voor/achter': ['voor', 'achter'],
+    'ja/nee': ['ja', 'nee'],
+    'wel/niet': ['wel', 'niet']
+  };
+
+  // Check if we have a predefined mapping
+  if (optionMappings[fieldName]) {
+    return optionMappings[fieldName];
+  }
+
+  // Fallback to splitting by / for other cases
+  if (fieldName.includes('/')) {
+    return fieldName.split('/').map(option => {
+      // Clean up options by removing trailing dashes and trimming
+      return option.replace(/-$/, '').trim();
+    });
+  }
+  
+  return [];
+};
+
+// Check if a field should be a checkbox based on its content
+export const shouldBeCheckbox = (fieldName: string): boolean => {
+  const options = parseCheckboxOptions(fieldName);
+  return options.length >= 2 && options.length <= 5; // Reasonable range for checkboxes
+};
+
+// Get default field options for a template
+export const getDefaultFieldOptions = (template: string): FieldOptions => {
+  const fields = extractTemplateFields(template);
+  const fieldOptions: FieldOptions = {};
+
+  fields.forEach(field => {
+    if (shouldBeCheckbox(field)) {
+      fieldOptions[field] = {
+        type: 'checkbox',
+        options: parseCheckboxOptions(field)
+      };
+    } else {
+      fieldOptions[field] = {
+        type: 'text'
+      };
+    }
+  });
+
+  return fieldOptions;
+};

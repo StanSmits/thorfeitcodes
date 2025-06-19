@@ -6,9 +6,10 @@ import { FactCodeSuggestion } from "../types/factCode";
 import { useAuth } from "../hooks/useAuth";
 import { useFactCodes } from "../hooks/useFactCodes";
 import { Button, Input, TextArea } from "./ui";
-import { highlightTemplateFields } from "../utils/templateUtils";
+import { highlightTemplateFields, getDefaultFieldOptions } from "../utils/templateUtils";
 import FactCodeTable from "./FactCodeTable";
 import SearchInput from "./SearchInput";
+import FieldOptionsEditor from "./FieldOptionsEditor";
 import { factCodeSuggestionService } from "../services/factCodeSuggestionService";
 
 const DEBOUNCE_MS = 250;
@@ -108,6 +109,12 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleFieldOptionsChange = (fieldOptions: any) => {
+    if (currentCode) {
+      setCurrentCode({ ...currentCode, field_options: fieldOptions });
+    }
+  };
+
   const renderTemplatePreview = () => {
     if (!currentCode?.template) return null;
     const parts = highlightTemplateFields(currentCode.template);
@@ -148,6 +155,7 @@ const AdminPanel: React.FC = () => {
         code: suggestion.suggested_code,
         description: suggestion.description,
         template: suggestion.template,
+        field_options: suggestion.field_options || getDefaultFieldOptions(suggestion.template),
       });
       await factCodeSuggestionService.updateSuggestionStatus(
         suggestion.id!,
@@ -184,6 +192,7 @@ const AdminPanel: React.FC = () => {
     suggested_code: "",
     description: "",
     template: "",
+    field_options: {} as any,
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
@@ -193,6 +202,7 @@ const AdminPanel: React.FC = () => {
       suggested_code: s.suggested_code,
       description: s.description,
       template: s.template,
+      field_options: s.field_options || getDefaultFieldOptions(s.template),
     });
   };
 
@@ -211,9 +221,10 @@ const AdminPanel: React.FC = () => {
         suggested_code: editForm.suggested_code,
         description: editForm.description,
         template: editForm.template,
+        field_options: editForm.field_options,
       });
       setEditingSuggestion(null);
-      setEditForm({ suggested_code: "", description: "", template: "" });
+      setEditForm({ suggested_code: "", description: "", template: "", field_options: {} });
     } catch (err) {
       console.error(err);
     } finally {
@@ -237,6 +248,7 @@ const AdminPanel: React.FC = () => {
                 code: "",
                 description: "",
                 template: "",
+                field_options: {},
               });
               setIsEditing(false);
               setActiveTab("factcodes");
@@ -306,6 +318,15 @@ const AdminPanel: React.FC = () => {
                   }
                   className="h-32"
                 />
+                
+                {currentCode.template && (
+                  <FieldOptionsEditor
+                    template={currentCode.template}
+                    fieldOptions={currentCode.field_options || {}}
+                    onChange={handleFieldOptionsChange}
+                  />
+                )}
+
                 <div>
                   <h4 className="text-md font-medium text-gray-700 mb-3">
                     Template Preview:
@@ -370,6 +391,15 @@ const AdminPanel: React.FC = () => {
                   value={editForm.template}
                   onChange={handleEditFormChange}
                 />
+                
+                {editForm.template && (
+                  <FieldOptionsEditor
+                    template={editForm.template}
+                    fieldOptions={editForm.field_options || {}}
+                    onChange={(fieldOptions) => setEditForm({ ...editForm, field_options: fieldOptions })}
+                  />
+                )}
+
                 <div>
                   <h4 className="text-md font-medium text-gray-700 mb-3">
                     Preview:
