@@ -25,7 +25,7 @@ const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
     const templateText = replaceTemplateFields(factCode.template, editableFields);
     const heldText = isHeld
       ? `Ik heb de persoon staande gehouden inzake feitcode ${factCode.code}.`
-      : `Ik kon de persoon niet staande houden vanwege ${reason || '[reden]'}.`;
+      : `Ik kon de persoon niet staande houden omdat ${reason || '[reden]'}.`;
 
     return `${templateText}\n\n${heldText}`;
   };
