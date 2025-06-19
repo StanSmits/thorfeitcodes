@@ -148,7 +148,7 @@ const SearchSection: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from("feitcodes")
-        .select("id, factcode, description, template")
+        .select("id, factcode, description, template, field_options")
         .eq("factcode", code)
         .single();
 
@@ -161,6 +161,7 @@ const SearchSection: React.FC = () => {
         code: data.factcode,
         description: data.description,
         template: data.template,
+        field_options: data.field_options || {},
       };
     } catch (error) {
       console.error("Error fetching fact code details:", error);
