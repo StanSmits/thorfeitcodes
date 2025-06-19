@@ -4,7 +4,7 @@ import { FactCode } from '../types/factCode';
 export const fetchFactCodesFromApi = async (): Promise<FactCode[]> => {
   const { data, error } = await supabase
     .from('feitcodes')
-    .select('id, factcode, description, template');
+    .select('id, factcode, description, template, field_options');
 
   if (error) throw new Error(error.message);
 

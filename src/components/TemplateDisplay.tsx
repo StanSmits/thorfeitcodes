@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Copy, CheckCircle } from 'lucide-react';
 import { FactCode } from '../types/factCode';
-import { Button, Input } from './ui';
+import { Button, Input, CheckboxGroup } from './ui';
 import { useToast } from '../hooks/useToast';
-import { extractTemplateFields, replaceTemplateFields } from '../utils/templateUtils';
+import { extractTemplateFields, replaceTemplateFields, getDefaultFieldOptions } from '../utils/templateUtils';
 
 interface TemplateDisplayProps {
   factCode: FactCode;
@@ -11,8 +11,11 @@ interface TemplateDisplayProps {
 
 const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
   const [copied, setCopied] = useState(false);
+  const templateFields = extractTemplateFields(factCode.template);
+  const fieldOptions = factCode.field_options || getDefaultFieldOptions(factCode.template);
+  
   const [editableFields, setEditableFields] = useState<Record<string, string>>(
-    Object.fromEntries(extractTemplateFields(factCode.template).map(field => [field, '']))
+    Object.fromEntries(templateFields.map(field => [field, '']))
   );
   const [isHeld, setIsHeld] = useState(false);
   const [reason, setReason] = useState('');
@@ -43,6 +46,33 @@ const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
     }
   };
 
+  const renderField = (field: string) => {
+    const fieldConfig = fieldOptions[field];
+    
+    if (fieldConfig?.type === 'checkbox' && fieldConfig.options) {
+      return (
+        <CheckboxGroup
+          key={field}
+          label={field}
+          options={fieldConfig.options}
+          value={editableFields[field]}
+          onChange={(value) => handleFieldChange(field, value)}
+          name={field}
+        />
+      );
+    }
+
+    return (
+      <Input
+        key={field}
+        label={field}
+        value={editableFields[field]}
+        onChange={(e) => handleFieldChange(field, e.target.value)}
+        placeholder={`Vul ${field.toLowerCase()} in...`}
+      />
+    );
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md mt-4">
       <div className="mb-4 pb-3 border-b border-gray-200">
@@ -68,16 +98,8 @@ const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
             <h4 className="text-md font-medium text-gray-700 mb-3">
               Vul de ontbrekende gegevens in:
             </h4>
-            <div className="space-y-3">
-              {Object.keys(editableFields).map((field) => (
-                <Input
-                  key={field}
-                  label={field}
-                  value={editableFields[field]}
-                  onChange={(e) => handleFieldChange(field, e.target.value)}
-                  placeholder={`Vul ${field.toLowerCase()} in...`}
-                />
-              ))}
+            <div className="space-y-4">
+              {templateFields.map(renderField)}
             </div>
           </div>
 
@@ -90,7 +112,7 @@ const TemplateDisplay: React.FC<TemplateDisplayProps> = ({ factCode }) => {
                   setIsHeld(e.target.checked);
                   if (e.target.checked) setReason('');
                 }}
-                className="form-checkbox"
+                className="form-checkbox text-[#ec0000] focus:ring-[#ec0000]"
               />
               <span className="text-sm font-medium text-gray-700">
                 Persoon staande gehouden

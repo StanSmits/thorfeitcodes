@@ -5,7 +5,7 @@ class FactCodeService {
   async fetchFactCodes(): Promise<FactCode[]> {
     const { data, error } = await supabase
       .from('feitcodes')
-      .select('id, factcode, description, template');
+      .select('id, factcode, description, template, field_options');
 
     if (error) throw error;
 
@@ -45,6 +45,7 @@ class FactCodeService {
       code: dbRecord.factcode,
       description: dbRecord.description,
       template: dbRecord.template,
+      field_options: dbRecord.field_options || {},
     };
   }
 
@@ -53,6 +54,7 @@ class FactCodeService {
       ...(factCode.code !== undefined ? { factcode: factCode.code } : {}),
       ...(factCode.description !== undefined ? { description: factCode.description } : {}),
       ...(factCode.template !== undefined ? { template: factCode.template } : {}),
+      ...(factCode.field_options !== undefined ? { field_options: factCode.field_options } : {}),
     };
   }
 }

@@ -10,9 +10,10 @@ import { factCodeSuggestionService } from "../services/factCodeSuggestionService
 const SuggestionModal: React.FC<{
   open: boolean;
   onClose: () => void;
-}> = ({ open, onClose }) => {
+  initialCode?: string;
+}> = ({ open, onClose, initialCode }) => {
   const [form, setForm] = useState({
-    suggested_code: "",
+    suggested_code: initialCode || "",
     description: "",
     template: "",
   });
@@ -22,6 +23,12 @@ const SuggestionModal: React.FC<{
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+
+  useEffect(() => {
+    if (open) {
+      setForm((f) => ({ ...f, suggested_code: initialCode || "" }));
+    }
+  }, [initialCode, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,7 +148,7 @@ const SearchSection: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from("feitcodes")
-        .select("id, factcode, description, template")
+        .select("id, factcode, description, template, field_options")
         .eq("factcode", code)
         .single();
 
@@ -154,6 +161,7 @@ const SearchSection: React.FC = () => {
         code: data.factcode,
         description: data.description,
         template: data.template,
+        field_options: data.field_options || {},
       };
     } catch (error) {
       console.error("Error fetching fact code details:", error);
@@ -252,7 +260,10 @@ const SearchSection: React.FC = () => {
               <p>Geen feitcodes gevonden voor &quot;{searchTerm}&quot;</p>
               <Button
                 className="mt-3"
-                onClick={() => setShowSuggestionModal(true)}
+                onClick={() => {
+                  setShowSuggestionModal(true)
+                  
+                }}
               >
                 Stel een nieuwe feitcode voor
               </Button>
@@ -301,7 +312,7 @@ const SearchSection: React.FC = () => {
         selectedCode && <TemplateDisplay factCode={selectedCode} />
       )}
 
-      <SuggestionModal open={showSuggestionModal} onClose={() => setShowSuggestionModal(false)} />
+      <SuggestionModal open={showSuggestionModal} onClose={() => setShowSuggestionModal(false)} initialCode={searchTerm} />
     </div>
   );
 };
