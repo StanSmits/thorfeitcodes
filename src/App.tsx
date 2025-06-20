@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import SearchSection from './components/SearchSection';
 import AdminPanelPage from './components/AdminPanel';
 import Login from './components/Login';
+import ChangelogPage from './components/ChangelogPage';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route path="/" element={<SearchSection />} />
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<AdminPanelPage />} />
+            <Route path="/changelog" element={<ChangelogPage />} />
           </Routes>
         </main>
         <Footer />

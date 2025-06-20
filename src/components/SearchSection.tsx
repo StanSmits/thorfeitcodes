@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, Trash2, X } from "lucide-react";
 import { supabase } from "../config/supabase";
 import { FactCode } from "../types/factCode";
 import { useToast } from "../hooks/useToast";
 import { Input, Button, TextArea } from "./ui";
 import TemplateDisplay from "./TemplateDisplay";
 import { factCodeSuggestionService } from "../services/factCodeSuggestionService";
+import ReactMarkdown from "react-markdown";
+import { Link } from "react-router-dom";
 
 const SuggestionModal: React.FC<{
   open: boolean;
@@ -77,6 +79,31 @@ const SuggestionModal: React.FC<{
             <Button type="submit" isLoading={isSubmitting}>Verstuur suggestie</Button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+const ChangelogModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  changelog: string;
+}> = ({ open, onClose, changelog }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl relative">
+        <button
+          className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+          onClick={onClose}
+          aria-label="Sluit changelog"
+        >
+          <X />
+        </button>
+        <h2 className="text-lg font-bold mb-4">Changelog</h2>
+        <div className="prose max-w-none overflow-y-auto" style={{ maxHeight: 400 }}>
+          <ReactMarkdown>{changelog}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );
@@ -198,7 +225,18 @@ const SearchSection: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-red-100 text-red-800 p-4 rounded-lg mb-6">
+      {/* Header with changelog link */}
+      <div className="flex justify-between items-center py-4 mb-2">
+        <div />
+        <Link
+          to="/changelog"
+          className="text-sm text-[#004699] hover:underline font-medium"
+        >
+          Bekijk de meest recente aanpassingen
+        </Link>
+      </div>
+      {/* Bug report banner */}
+      <div className="bg-red-100 text-red-800 p-4 rounded-lg mb-3">
         <p className="text-sm text-center font-semibold">
           Deze website is nog in BETA. Er kunnen fouten optreden en niet alles
           klopt. Gebruik met voorzichtigheid!
