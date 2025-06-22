@@ -11,15 +11,6 @@ const Footer: React.FC = () => {
           <p className="text-sm text-gray-300">
             © {currentYear} Stan Smits
           </p>
-          <div className="flex items-center space-x-4">
-            <a 
-              href="/admin" 
-              className="flex items-center space-x-1 text-sm text-gray-300 hover:text-white transition duration-300"
-            >
-              <Settings className="w-4 h-4" />
-              <span>Admin Panel</span>
-            </a>
-          </div>
         </div>
       </div>
     </footer>
