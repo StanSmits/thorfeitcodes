@@ -394,7 +394,7 @@ const ProfilePage: React.FC = () => {
                 Abonnement opzeggen
               </h3>
               <p className="text-gray-600 mb-6">
-                Weet je zeker dat je je abonnement wilt opzeggen? Je verliest toegang tot alle premium functies.
+                Weet je zeker dat je je abonnement wilt opzeggen? Je verliest toegang tot alle pro functies.
               </p>
               <div className="flex justify-end space-x-3">
                 <Button
