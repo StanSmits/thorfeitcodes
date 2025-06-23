@@ -3,7 +3,7 @@ import { User, Settings, CreditCard, Shield, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Input } from './ui';
 import { ProtectedRoute } from './auth';
-const { showError } = useToast();
+import { useToast } from "../hooks/useToast";
 
 const SUBSCRIPTION_PLANS = [
   {
@@ -21,6 +21,8 @@ const SUBSCRIPTION_PLANS = [
 ];
 
 const ProfilePage: React.FC = () => {
+const { showError } = useToast();
+  
   const { 
     user, 
     updateProfile, 
