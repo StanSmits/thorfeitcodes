@@ -271,7 +271,7 @@ const ProfilePage: React.FC = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className="text-lg font-semibold text-green-800">
-                          {user.subscription_plan || 'Premium'} Abonnement
+                          {user.subscription_plan || 'Pro'} Abonnement
                         </h3>
                         <p className="text-green-600">Actief</p>
                       </div>
