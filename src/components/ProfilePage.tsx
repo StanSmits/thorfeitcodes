@@ -88,6 +88,8 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleSubscribe = async (planId: string) => {
+  return console.error('Functie niet geimplementeerd')
+    
     setSaving(true);
     try {
       await subscribe(planId);
