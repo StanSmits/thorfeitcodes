@@ -6,7 +6,7 @@ import { ProtectedRoute } from './auth';
 
 const SUBSCRIPTION_PLANS = [
   {
-    id: 'premium',
+    id: 'pro',
     name: 'Premium',
     price: 2.99,
     currency: 'EUR',
