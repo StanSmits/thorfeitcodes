@@ -231,16 +231,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setLoadingWithTimeout(true);
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
-
+      // Only update the auth user metadata, not the profiles table directly
+      const { error } = await supabase.auth.updateUser({
+        data: updates,
+      });
       if (error) throw error;
-
-      if (mountedRef.current) {
-        setUser({ ...user, ...updates });
-        showSuccess('Profiel succesvol bijgewerkt!');
+      // The profile will be updated via a Supabase trigger, so just show success
+      showSuccess('Profiel succesvol bijgewerkt!');
+      // Fetch the updated profile from the database
+      const updatedProfile = await fetchUserProfile(user.id);
+      if (updatedProfile && mountedRef.current) {
+        setUser(updatedProfile);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Er is een fout opgetreden bij het bijwerken van het profiel.';
