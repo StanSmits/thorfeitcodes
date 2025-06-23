@@ -91,7 +91,7 @@ const { showError } = useToast();
   };
 
   const handleSubscribe = async (planId: string) => {
-  showError("Suggestie kon niet worden ingestuurd.");
+  showError("Deze functie word nog niet ondersteund.");
   return console.error('Functie niet geimplementeerd')
     
     setSaving(true);
