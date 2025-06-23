@@ -88,6 +88,7 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleSubscribe = async (planId: string) => {
+  showError("Suggestie kon niet worden ingestuurd.");
   return console.error('Functie niet geimplementeerd')
     
     setSaving(true);
