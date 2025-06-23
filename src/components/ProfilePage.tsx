@@ -13,7 +13,6 @@ const SUBSCRIPTION_PLANS = [
     interval: 'month' as const,
     features: [
       'Onbeperkte toegang tot alle feitcodes',
-      'Prioriteit ondersteuning',
       'Geavanceerde zoekfuncties',
       'Export mogelijkheden'
     ]
