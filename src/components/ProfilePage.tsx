@@ -54,12 +54,12 @@ const ProfilePage: React.FC = () => {
 
   const handleProfileSave = async () => {
     if (!user) return;
-
+    
     setSaving(true);
     try {
       await updateProfile({
         full_name: profileForm.full_name,
-        // email is intentionally not sent to updateProfile
+        email: profileForm.email,
       });
       setIsEditing(false);
       await refreshUser();
@@ -95,7 +95,6 @@ const ProfilePage: React.FC = () => {
   const handleSubscribe = async (planId: string) => {
     // TODO: Implement actual subscription logic
     return showError("Deze functie word nog niet ondersteund.");
-
     setSaving(true);
     try {
       await subscribe(planId);
@@ -260,7 +259,6 @@ const ProfilePage: React.FC = () => {
                     label="E-mailadres"
                     type="email"
                     value={isEditing ? profileForm.email : user.email}
-                    // Email field is always readOnly and disabled
                     readOnly
                     disabled
                   />
@@ -332,7 +330,7 @@ const ProfilePage: React.FC = () => {
                     <p className="text-gray-600">
                       Upgrade naar Pro voor toegang tot alle functies.
                     </p>
-
+                    
                     {SUBSCRIPTION_PLANS.map((plan) => (
                       <div
                         key={plan.id}
