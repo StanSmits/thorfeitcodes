@@ -299,7 +299,7 @@ const ProfilePage: React.FC = () => {
                 ) : (
                   <div className="space-y-4">
                     <p className="text-gray-600">
-                      Upgrade naar Premium voor toegang tot alle functies.
+                      Upgrade naar Pro voor toegang tot alle functies.
                     </p>
                     
                     {SUBSCRIPTION_PLANS.map((plan) => (
