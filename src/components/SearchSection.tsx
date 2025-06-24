@@ -124,6 +124,7 @@ const SearchSection: React.FC = () => {
           .from("feitcodes")
           .select("factcode")
           .ilike("factcode", `%${searchTerm.toLowerCase()}%`)
+          .order("access_count", { ascending: false })
           .limit(5);
 
         if (error) throw error;
