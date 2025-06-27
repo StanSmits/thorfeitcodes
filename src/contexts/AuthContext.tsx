@@ -239,17 +239,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializationRef.current = true;
 
     const initializeAuth = async () => {
+      console.log('Initializing auth...');
+      
       try {
         setLoading(true);
         
+        // Get current session
         const session = await authService.getCurrentSession();
+        console.log('Current session:', session?.user?.id ? 'Found' : 'None');
         
         if (session?.user && mountedRef.current) {
+          console.log('Fetching user profile for:', session.user.id);
           const profile = await authService.fetchUserProfile(session.user.id);
           
           if (profile && mountedRef.current) {
+            console.log('Profile found:', profile.email, profile.role);
             setUser(profile);
           } else if (mountedRef.current) {
+            console.log('No profile found, creating basic user');
             // Create basic user if profile fetch fails
             const basicUser: User = {
               id: session.user.id,
@@ -261,8 +268,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               updated_at: new Date().toISOString(),
             };
             setUser(basicUser);
-            console.warn('Using basic user profile during initialization');
           }
+        } else {
+          console.log('No session found');
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -271,12 +279,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } finally {
         if (mountedRef.current) {
+          console.log('Auth initialization complete');
           updateState({ isLoading: false, isInitialized: true });
         }
       }
     };
 
-    initializeAuth();
+    // Add a small delay to ensure Supabase is ready
+    const timeoutId = setTimeout(initializeAuth, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [setLoading, setUser, setError, updateState]);
 
   // Listen to auth state changes

@@ -15,8 +15,13 @@ export class AuthService {
 
   async getCurrentSession() {
     try {
+      console.log('Getting current session...');
       const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
+      if (error) {
+        console.error('Session error:', error);
+        throw error;
+      }
+      console.log('Session result:', session ? 'Found' : 'None');
       return session;
     } catch (error) {
       console.error('Error getting session:', error);
@@ -25,15 +30,19 @@ export class AuthService {
   }
 
   async fetchUserProfile(userId: string, useCache = true): Promise<User | null> {
+    console.log('Fetching user profile for:', userId, 'useCache:', useCache);
+    
     // Check cache first
     if (useCache) {
       const cached = this.profileCache.get(userId);
       if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+        console.log('Using cached profile');
         return cached.user;
       }
     }
 
     try {
+      console.log('Fetching profile from database...');
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -41,14 +50,17 @@ export class AuthService {
         .single();
 
       if (error) {
+        console.error('Profile fetch error:', error);
         if (error.code === 'PGRST116') {
           // Profile doesn't exist, return null
+          console.log('Profile not found');
           return null;
         }
         throw error;
       }
 
       if (data) {
+        console.log('Profile found:', data.email, data.role);
         // Cache the result
         this.profileCache.set(userId, {
           user: data,
@@ -57,6 +69,7 @@ export class AuthService {
         return data;
       }
 
+      console.log('No profile data returned');
       return null;
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -66,12 +79,14 @@ export class AuthService {
 
   async signIn(email: string, password: string): Promise<{ user: User | null; error: string | null }> {
     try {
+      console.log('Signing in user:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
       if (error) {
+        console.error('Sign in error:', error);
         let message = 'Er is een fout opgetreden bij het inloggen.';
         
         if (error.message.includes('Invalid login credentials')) {
@@ -86,13 +101,16 @@ export class AuthService {
       }
 
       if (!data.user) {
+        console.error('No user data received');
         return { user: null, error: 'Geen gebruikersgegevens ontvangen.' };
       }
 
+      console.log('Sign in successful, fetching profile...');
       // Fetch user profile
       const profile = await this.fetchUserProfile(data.user.id, false);
       
       if (!profile) {
+        console.log('No profile found, creating basic user');
         // Create basic profile if none exists
         const basicUser: User = {
           id: data.user.id,
@@ -106,6 +124,7 @@ export class AuthService {
         return { user: basicUser, error: null };
       }
 
+      console.log('Sign in complete with profile');
       return { user: profile, error: null };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -122,6 +141,7 @@ export class AuthService {
         return { user: null, error: 'Wachtwoord moet minimaal 6 karakters lang zijn.' };
       }
 
+      console.log('Signing up user:', email);
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -133,6 +153,7 @@ export class AuthService {
       });
 
       if (error) {
+        console.error('Sign up error:', error);
         let message = 'Er is een fout opgetreden bij het registreren.';
         
         if (error.message.includes('User already registered')) {
@@ -147,17 +168,21 @@ export class AuthService {
       }
 
       if (!data.user) {
+        console.error('No user data received');
         return { user: null, error: 'Geen gebruikersgegevens ontvangen.' };
       }
 
+      console.log('Sign up successful');
       // If user is immediately signed in (no email confirmation)
       if (data.session) {
+        console.log('User immediately signed in, waiting for profile...');
         // Wait a bit for profile creation trigger
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         const profile = await this.fetchUserProfile(data.user.id, false);
         
         if (!profile) {
+          console.log('No profile found after signup, creating basic user');
           // Create basic profile if trigger failed
           const basicUser: User = {
             id: data.user.id,
@@ -171,9 +196,11 @@ export class AuthService {
           return { user: basicUser, error: null };
         }
 
+        console.log('Sign up complete with profile');
         return { user: profile, error: null };
       }
 
+      console.log('Email confirmation required');
       // Email confirmation required
       return { user: null, error: null };
     } catch (error) {
@@ -187,12 +214,14 @@ export class AuthService {
 
   async signOut(): Promise<{ error: string | null }> {
     try {
+      console.log('Signing out...');
       // Clear cache
       this.profileCache.clear();
       
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
+      console.log('Sign out successful');
       return { error: null };
     } catch (error) {
       console.error('Sign out error:', error);
@@ -204,6 +233,7 @@ export class AuthService {
 
   async updateProfile(userId: string, updates: Partial<User>): Promise<{ error: string | null }> {
     try {
+      console.log('Updating profile for:', userId);
       // Clear cache for this user
       this.profileCache.delete(userId);
       
@@ -213,6 +243,7 @@ export class AuthService {
       
       if (error) throw error;
       
+      console.log('Profile update successful');
       return { error: null };
     } catch (error) {
       console.error('Update profile error:', error);
@@ -228,12 +259,14 @@ export class AuthService {
         return { error: 'Wachtwoord moet minimaal 6 karakters lang zijn.' };
       }
 
+      console.log('Changing password...');
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
 
       if (error) throw error;
 
+      console.log('Password change successful');
       return { error: null };
     } catch (error) {
       console.error('Change password error:', error);
@@ -245,6 +278,7 @@ export class AuthService {
 
   async subscribe(userId: string, plan: string): Promise<{ error: string | null }> {
     try {
+      console.log('Subscribing user:', userId, 'to plan:', plan);
       // Clear cache for this user
       this.profileCache.delete(userId);
       
@@ -264,6 +298,7 @@ export class AuthService {
 
       if (error) throw error;
 
+      console.log('Subscription successful');
       return { error: null };
     } catch (error) {
       console.error('Subscribe error:', error);
@@ -275,6 +310,7 @@ export class AuthService {
 
   async cancelSubscription(userId: string): Promise<{ error: string | null }> {
     try {
+      console.log('Cancelling subscription for:', userId);
       // Clear cache for this user
       this.profileCache.delete(userId);
       
@@ -291,6 +327,7 @@ export class AuthService {
 
       if (error) throw error;
 
+      console.log('Subscription cancellation successful');
       return { error: null };
     } catch (error) {
       console.error('Cancel subscription error:', error);
@@ -301,6 +338,7 @@ export class AuthService {
   }
 
   clearCache(): void {
+    console.log('Clearing auth cache');
     this.profileCache.clear();
   }
 }
