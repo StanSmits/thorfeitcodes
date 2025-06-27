@@ -15,14 +15,35 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   fallback,
   requireAuth = true
 }) => {
-  const { isAuthenticated, hasRole, isLoading } = useAuth();
+  const { isAuthenticated, hasRole, isLoading, isInitialized, error } = useAuth();
 
-  if (isLoading) {
+  // Show loading while auth is initializing
+  if (!isInitialized || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ec0000]"></div>
           <p className="text-gray-600">Toegang controleren...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if there's an auth error
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="max-w-md mx-auto">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Authenticatiefout</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-sm text-gray-500">
+            Probeer de pagina te vernieuwen of opnieuw in te loggen.
+          </p>
         </div>
       </div>
     );

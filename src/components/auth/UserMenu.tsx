@@ -16,9 +16,22 @@ export const UserMenu: React.FC = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [isOpen]);
 
   const handleSignOut = async () => {
     try {
@@ -27,6 +40,7 @@ export const UserMenu: React.FC = () => {
       navigate('/');
     } catch (error) {
       // Error handling is done in the auth context
+      console.error('Sign out error:', error);
     }
   };
 
@@ -61,8 +75,10 @@ export const UserMenu: React.FC = () => {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 text-gray-700 hover:text-[#ec0000] transition-colors duration-300 p-2 rounded-md hover:bg-gray-100"
+        className="flex items-center space-x-2 text-gray-700 hover:text-[#ec0000] transition-colors duration-300 p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#ec0000] focus:ring-offset-2"
         aria-label="Gebruikersmenu"
+        aria-expanded={isOpen}
+        aria-haspopup="true"
       >
         <div className="w-8 h-8 bg-[#ec0000] text-white rounded-full flex items-center justify-center">
           <User className="w-4 h-4" />
@@ -100,10 +116,11 @@ export const UserMenu: React.FC = () => {
             </div>
           </div>
 
-          <div className="py-1">
+          <div className="py-1" role="menu" aria-orientation="vertical">
             <button
               onClick={() => handleNavigation('/profile')}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:bg-gray-100"
+              role="menuitem"
             >
               <Settings className="w-4 h-4 mr-3" />
               Profiel instellingen
@@ -112,7 +129,8 @@ export const UserMenu: React.FC = () => {
             {(isAdmin || isModerator) && (
               <button
                 onClick={() => handleNavigation('/admin')}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:bg-gray-100"
+                role="menuitem"
               >
                 <Shield className="w-4 h-4 mr-3" />
                 Admin Panel
@@ -121,7 +139,8 @@ export const UserMenu: React.FC = () => {
 
             <button
               onClick={handleSignOut}
-              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus:bg-red-50"
+              role="menuitem"
             >
               <LogOut className="w-4 h-4 mr-3" />
               Uitloggen

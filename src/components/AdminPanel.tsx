@@ -25,7 +25,7 @@ const AdminPanel: React.FC = () => {
   );
   const [suggestions, setSuggestions] = useState<FactCodeSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  const { isAuthenticated, isLoading: authLoading} = useAuth();
+  const { isAuthenticated, isInitialized, isModerator, isAdmin } = useAuth();
   const {
     isLoading,
     factCodes,
@@ -42,15 +42,17 @@ const AdminPanel: React.FC = () => {
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Auth and initial data fetch
+  // Auth check and initial data fetch
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate("/login");
+    if (!isInitialized) return;
+    
+    if (!isAuthenticated || (!isModerator && !isAdmin)) {
+      navigate("/");
       return;
     }
+    
     fetchFactCodes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, isAuthenticated, navigate]);
+  }, [isInitialized, isAuthenticated, isModerator, isAdmin, navigate, fetchFactCodes]);
 
   // Fetch suggestions for the suggestions tab
   useEffect(() => {
@@ -71,16 +73,13 @@ const AdminPanel: React.FC = () => {
     try {
       if (isEditing && currentCode.id) {
         await updateFactCode(currentCode.id, currentCode);
-        await fetchFactCodes(); // Refresh list after update
       } else {
         await addFactCode(currentCode);
       }
-      await fetchFactCodes(); // Refresh list after save
       setCurrentCode(null);
       setIsEditing(false);
     } catch (error) {
       console.error(error);
-      // Optionally show error toast here
     }
   };
 
@@ -98,7 +97,6 @@ const AdminPanel: React.FC = () => {
     }
     try {
       await deleteFactCode(code.id);
-      await fetchFactCodes(); // Refresh list after delete
     } catch (error) {
       console.error(error);
     }
@@ -150,7 +148,6 @@ const AdminPanel: React.FC = () => {
   }, [factCodes, debouncedSearch]);
 
   const handleApproveSuggestion = async (suggestion: FactCodeSuggestion) => {
-    // Add as new fact code, then mark suggestion as accepted
     try {
       await addFactCode({
         code: suggestion.suggested_code,
@@ -167,9 +164,7 @@ const AdminPanel: React.FC = () => {
           s.id === suggestion.id ? { ...s, status: "accepted" } : s
         )
       );
-      fetchFactCodes();
     } catch (err) {
-      // Optionally show error toast
       console.error(err);
     }
   };
@@ -233,10 +228,6 @@ const AdminPanel: React.FC = () => {
     }
   };
 
-  if (authLoading) {
-    return <div className="text-center py-8">Loading...</div>;
-  }
-
   return (
     <ProtectedRoute requiredRole={['moderator', 'administrator']}>
       <div className="container mx-auto px-4 py-8">
@@ -265,20 +256,20 @@ const AdminPanel: React.FC = () => {
         {/* Tabs */}
         <div className="flex gap-4 mb-6 border-b">
           <button
-            className={`px-4 py-2 font-medium ${
+            className={`px-4 py-2 font-medium transition-colors ${
               activeTab === "factcodes"
                 ? "border-b-2 border-[#ec0000] text-[#ec0000]"
-                : "text-gray-600"
+                : "text-gray-600 hover:text-gray-800"
             }`}
             onClick={() => setActiveTab("factcodes")}
           >
             Feitcodes beheren
           </button>
           <button
-            className={`px-4 py-2 font-medium ${
+            className={`px-4 py-2 font-medium transition-colors ${
               activeTab === "suggestions"
                 ? "border-b-2 border-[#ec0000] text-[#ec0000]"
-                : "text-gray-600"
+                : "text-gray-600 hover:text-gray-800"
             }`}
             onClick={() => setActiveTab("suggestions")}
           >
@@ -438,58 +429,62 @@ const AdminPanel: React.FC = () => {
             )}
 
             {isLoadingSuggestions ? (
-              <div>Bezig met laden...</div>
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ec0000]"></div>
+              </div>
             ) : suggestions.filter((s) => s.status !== "accepted").length ===
               0 ? (
-              <div className="text-gray-500">Geen suggesties gevonden.</div>
+              <div className="text-gray-500 text-center py-8">Geen suggesties gevonden.</div>
             ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Code
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Beschrijving
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      Acties
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {suggestions
-                    .filter((s) => s.status !== "accepted")
-                    .map((s) => (
-                      <tr key={s.id}>
-                        <td className="px-4 py-2 font-mono">
-                          {s.suggested_code}
-                        </td>
-                        <td className="px-4 py-2">{s.description}</td>
-                        <td className="px-4 py-2 text-xs">
-                          {s.status || "pending"}
-                        </td>
-                        <td className="px-4 py-2 text-right flex gap-2 justify-end">
-                          <Button
-                            variant="primary"
-                            onClick={() => openEditModal(s)}
-                          >
-                            Controleren
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            onClick={() => handleDeleteSuggestion(s.id!)}
-                          >
-                            Verwijderen
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Code
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Beschrijving
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Status
+                      </th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                        Acties
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {suggestions
+                      .filter((s) => s.status !== "accepted")
+                      .map((s) => (
+                        <tr key={s.id}>
+                          <td className="px-4 py-2 font-mono">
+                            {s.suggested_code}
+                          </td>
+                          <td className="px-4 py-2">{s.description}</td>
+                          <td className="px-4 py-2 text-xs">
+                            {s.status || "pending"}
+                          </td>
+                          <td className="px-4 py-2 text-right flex gap-2 justify-end">
+                            <Button
+                              variant="primary"
+                              onClick={() => openEditModal(s)}
+                            >
+                              Controleren
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              onClick={() => handleDeleteSuggestion(s.id!)}
+                            >
+                              Verwijderen
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}

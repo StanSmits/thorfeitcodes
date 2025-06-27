@@ -8,6 +8,7 @@ export interface User {
   subscription_expires_at?: string;
   created_at: string;
   updated_at: string;
+  last_sign_in?: string;
 }
 
 export type UserRole = 'user' | 'subscriber' | 'moderator' | 'administrator';
@@ -17,6 +18,8 @@ export interface AuthState {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isInitialized: boolean;
+  error: string | null;
 }
 
 export interface AuthContextType extends AuthState {
@@ -32,6 +35,7 @@ export interface AuthContextType extends AuthState {
   isModerator: boolean;
   isSubscriber: boolean;
   refreshUser: () => Promise<void>;
+  clearError: () => void;
 }
 
 export interface SubscriptionPlan {

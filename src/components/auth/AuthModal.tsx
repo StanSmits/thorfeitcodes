@@ -21,7 +21,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, signUp, isLoading } = useAuth();
+  const { signIn, signUp, isLoading, error, clearError } = useAuth();
 
   const resetForm = () => {
     setEmail('');
@@ -29,6 +29,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setFullName('');
     setShowPassword(false);
     setIsSubmitting(false);
+    clearError();
   };
 
   const handleClose = () => {
@@ -42,6 +43,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (isSubmitting || isLoading) return;
     
     setIsSubmitting(true);
+    clearError();
 
     try {
       if (mode === 'signin') {
@@ -64,7 +66,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const switchMode = () => {
     setMode(mode === 'signin' ? 'signup' : 'signin');
-    resetForm();
+    clearError();
   };
 
   useEffect(() => {
@@ -77,6 +79,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   }, [isOpen]);
 
+  // Close modal on escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const isFormValid = email.trim() && password.length >= 6;
@@ -86,7 +105,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative">
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-[#ec0000] focus:ring-offset-2 rounded"
           aria-label="Sluiten"
           disabled={isSubmitting}
         >
@@ -97,6 +116,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <h2 className="text-2xl font-bold text-gray-800 mb-6">
             {mode === 'signin' ? 'Inloggen' : 'Registreren'}
           </h2>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
@@ -134,7 +159,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-9 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#ec0000] focus:ring-offset-2 rounded"
                 aria-label={
                   showPassword ? 'Verberg wachtwoord' : 'Toon wachtwoord'
                 }
@@ -169,7 +194,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {mode === 'signin' ? 'Nog geen account?' : 'Al een account?'}
               <button
                 onClick={switchMode}
-                className="ml-1 text-[#ec0000] hover:underline font-medium"
+                className="ml-1 text-[#ec0000] hover:underline font-medium focus:outline-none focus:ring-2 focus:ring-[#ec0000] focus:ring-offset-2 rounded"
                 disabled={isSubmitting}
               >
                 {mode === 'signin' ? 'Registreer hier' : 'Log hier in'}
