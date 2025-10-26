@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { FieldOptionsEditor } from './FieldOptionsEditor';
 
@@ -21,6 +22,7 @@ interface FieldConfig {
 
 export function AdminFeitcodes() {
   const queryClient = useQueryClient();
+  const { isAdmin, isModerator } = useAuth();
   const [open, setOpen] = useState(false);
   const [editingCode, setEditingCode] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -384,7 +386,17 @@ export function AdminFeitcodes() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          disabled={isModerator && !isAdmin}
                           onClick={() => {
+                            if (isModerator && !isAdmin) {
+                              toast({
+                                title: 'Geen toestemming',
+                                description: 'Moderators kunnen geen feitcodes verwijderen.',
+                                variant: 'destructive',
+                              });
+                              return;
+                            }
+
                             if (confirm('Weet u zeker dat u deze feitcode wilt verwijderen?')) {
                               deleteMutation.mutate(code.id);
                             }

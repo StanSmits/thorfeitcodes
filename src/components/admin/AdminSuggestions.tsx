@@ -16,6 +16,8 @@ export function AdminSuggestions() {
       const { data, error } = await supabase
         .from('factcode_suggestions')
         .select('*')
+        .is('deleted_at', null)
+        .eq('status', 'pending')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;

@@ -23,6 +23,8 @@ export type Database = {
           status: string | null
           suggested_code: string
           template: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
         }
         Insert: {
           created_at?: string | null
@@ -32,6 +34,8 @@ export type Database = {
           status?: string | null
           suggested_code?: string
           template?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
         }
         Update: {
           created_at?: string | null
@@ -41,6 +45,8 @@ export type Database = {
           status?: string | null
           suggested_code?: string
           template?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
         }
         Relationships: []
       }
