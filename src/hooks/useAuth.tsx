@@ -55,13 +55,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserRoles = async (userId: string) => {
     try {
       const { data, error } = await supabase
-        .from('user_roles')
+        .from('profiles')
         .select('role')
-        .eq('user_id', userId);
+        .eq('id', userId);
       
       if (error) throw error;
-      
-      setRoles(data?.map(r => r.role) || []);
+      // Normalize DB enum values to UI role keys
+      const mapped = (data || []).map((r: any) => {
+        const role: string = r.role;
+        if (role === 'administrator') return 'admin';
+        if (role === 'subscriber') return 'user';
+        return role; // 'moderator' or 'user' passthrough
+      });
+
+      setRoles(mapped || []);
     } catch (error) {
       console.error('Error fetching roles:', error);
       setRoles([]);

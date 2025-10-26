@@ -161,30 +161,7 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
+      
       users: {
         Row: {
           active: boolean | null
@@ -226,11 +203,11 @@ export type Database = {
       create_missing_profiles: { Args: never; Returns: undefined }
       get_user_roles: {
         Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"][]
+        Returns: Database["public"]["Enums"]["user_role"][]
       }
       has_role: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
+          _role: Database["public"]["Enums"]["user_role"]
           _user_id: string
         }
         Returns: boolean
@@ -238,7 +215,6 @@ export type Database = {
       increment_access_count: { Args: { item_id: string }; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
       subscription_plan_enum: "pro"
       subscription_status_enum: "active" | "inactive" | "cancelled"
       user_role: "user" | "subscriber" | "moderator" | "administrator"
@@ -369,7 +345,6 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
       subscription_plan_enum: ["pro"],
       subscription_status_enum: ["active", "inactive", "cancelled"],
       user_role: ["user", "subscriber", "moderator", "administrator"],

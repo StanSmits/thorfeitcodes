@@ -14,44 +14,48 @@ export function AdminUsers() {
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      const { data: usersData, error: usersError } = await supabase
+      // Use the `profiles` table only. The `role` column on profiles is a single
+      // enum (user_role) so we convert it to a roles array for compatibility with
+      // the existing UI which renders multiple badges.
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, email, role, created_at')
         .order('created_at', { ascending: false });
-      if (usersError) throw usersError;
+      if (profilesError) throw profilesError;
 
-      const usersWithRoles = await Promise.all(
-        usersData.map(async (user) => {
-          const { data: rolesData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', user.id);
-          return {
-            ...user,
-            roles: rolesData?.map((r) => r.role) || [],
-          };
-        })
-      );
+      const normalizeDbToUi = (dbRole: string) => {
+        if (!dbRole) return 'user';
+        if (dbRole === 'administrator') return 'admin';
+        if (dbRole === 'subscriber') return 'user';
+        return dbRole; // moderator or user
+      };
+
+      const usersWithRoles = (profilesData || []).map((p: any) => ({
+        ...p,
+        roles: p.role ? [normalizeDbToUi(p.role)] : [],
+      }));
 
       return usersWithRoles;
     },
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, role, action }: { userId: string; role: 'admin' | 'moderator' | 'user'; action: 'add' | 'remove' }) => {
-      if (action === 'add') {
-        const { error } = await supabase
-          .from('user_roles')
-          .insert([{ user_id: userId, role: role as any }]);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId)
-          .eq('role', role as any);
-        if (error) throw error;
-      }
+    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'moderator' | 'user' }) => {
+      // Map UI role to DB enum value
+      const normalizeUiToDb = (uiRole: string) => {
+        if (uiRole === 'admin') return 'administrator';
+        if (uiRole === 'user') return 'user';
+        if (uiRole === 'moderator') return 'moderator';
+        return uiRole;
+      };
+
+      const dbRole = normalizeUiToDb(role);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: dbRole as any, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -81,16 +85,10 @@ export function AdminUsers() {
   };
 
   const handleRoleChange = (userId: string, currentRoles: string[], newRole: 'admin' | 'moderator' | 'user') => {
-    if (newRole === 'user') {
-      // Remove all roles
-      currentRoles.forEach((role) => {
-        if (role !== 'user') {
-          updateRoleMutation.mutate({ userId, role: role as 'admin' | 'moderator' | 'user', action: 'remove' });
-        }
-      });
-    } else if (!currentRoles.includes(newRole)) {
-      updateRoleMutation.mutate({ userId, role: newRole, action: 'add' });
-    }
+    const currentRole = currentRoles && currentRoles.length > 0 ? currentRoles[0] : 'user';
+    if (currentRole === newRole) return;
+    // Update the single role column on profiles
+    updateRoleMutation.mutate({ userId, role: newRole });
   };
 
   return (
