@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Copy, Check, HelpCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface RVWGeneratorProps {
@@ -17,6 +17,11 @@ interface RVWGeneratorProps {
 export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const previewTimeout = useRef<number | null>(null);
+  // Map keyed by lowercased sign_code -> sign record
+  const [signsMap, setSignsMap] = useState<Record<string, any>>({});
+  // Hover preview state (positioned near cursor)
+  const [preview, setPreview] = useState<null | { name: string; image_url?: string; x: number; y: number }>(null);
 
   useEffect(() => {
     // Increment access count
@@ -25,6 +30,90 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
     };
     incrementCount();
   }, [factcode.factcode]);
+
+  // Fetch sign records that match option labels.
+  // We try to avoid unnecessary requests: fetch once using .in for exact matches,
+  // and only run a second (small) ilike OR query for any unmatched labels to cover capitalization differences.
+  useEffect(() => {
+    const fieldOptions = factcode.field_options || {};
+    const names = new Set<string>();
+
+    const collect = (opts: any) => {
+      if (!opts) return;
+      if (Array.isArray(opts)) {
+        opts.forEach((o: any) => {
+          if (o && typeof o === 'object' && 'label' in o) names.add(String(o.label).trim());
+          else if (typeof o === 'string') names.add(String(o).trim());
+        });
+      } else if (typeof opts === 'object' && opts.type === 'radio') {
+        (opts.options || []).forEach((o: any) => {
+          if (o && typeof o === 'object' && 'label' in o) names.add(String(o.label).trim());
+          else if (typeof o === 'string') names.add(String(o).trim());
+        });
+      }
+    };
+
+    Object.values(fieldOptions).forEach(collect);
+    const toFetch = Array.from(names).filter(Boolean);
+    if (toFetch.length === 0) return;
+
+    const fetchSigns = async () => {
+      try {
+        // First try exact matches (minimal and fast) matching on sign_code
+        const { data: exactData, error: exactError } = await (supabase as any)
+          .from('road_signs')
+          .select('sign_code, sign_name, description, image_url')
+          .in('sign_code', toFetch);
+
+        if (exactError) {
+          console.error('Failed to fetch exact sign matches', exactError);
+          return;
+        }
+
+        const map: Record<string, any> = {};
+        const matchedLower = new Set<string>();
+        (exactData || []).forEach((s: any) => {
+          if (s?.sign_code) {
+            const key = String(s.sign_code).trim().toLowerCase();
+            map[key] = s;
+            matchedLower.add(key);
+          }
+        });
+
+  // Determine missing labels (case-insensitive)
+  const missing = toFetch.filter(t => !matchedLower.has(String(t).trim().toLowerCase()));
+
+        if (missing.length > 0) {
+          // Build OR ilike query for the missing labels to capture case-insensitive matches
+          // Use exact ilike on the whole string to avoid partial matches
+          const orParts = missing.map((m) => `sign_code.ilike.'${String(m).replace(/'/g, "''")}'`);
+          const orQuery = orParts.join(',');
+          const { data: ilikeData, error: ilikeError } = await (supabase as any)
+            .from('road_signs')
+            .select('sign_code, sign_name, description, image_url')
+            .or(orQuery);
+
+          if (ilikeError) {
+            console.error('Failed to fetch ilike sign matches', ilikeError);
+          } else {
+            (ilikeData || []).forEach((s: any) => {
+              if (s?.sign_code) {
+                const key = String(s.sign_code).trim().toLowerCase();
+                map[key] = s;
+              }
+            });
+          }
+        }
+
+        setSignsMap(map);
+      } catch (err) {
+        console.error('Error fetching signs', err);
+      }
+    };
+
+    fetchSigns();
+    // We only want to re-run when the field options object identity changes
+  }, [factcode.field_options]);
 
   const fieldOptions = factcode.field_options || {};
   const fieldTooltips = factcode.field_tooltips || {};
@@ -74,6 +163,46 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const showPreview = (label: string, e: React.MouseEvent) => {
+    const key = String(label || '').trim().toLowerCase();
+    const sign = signsMap[key];
+    if (!sign) return;
+    if (previewTimeout.current) window.clearTimeout(previewTimeout.current);
+    previewTimeout.current = window.setTimeout(() => {
+      // Calculate a viewport-safe position for the preview card so it is always visible
+      const margin = 12;
+      const cardWidth = 320; // matches maxWidth used in JSX
+      const cardHeight = 280; // estimated card height (image + caption + padding)
+
+      let left = e.clientX + margin;
+      let top = e.clientY + margin;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // If the card would overflow to the right, flip it to the left of the cursor
+      if (left + cardWidth + 8 > vw) {
+        left = e.clientX - cardWidth - margin;
+      }
+      // If flipping left still puts it off-screen, clamp to the right edge
+      if (left < 8) left = 8;
+
+      // If the card would overflow the bottom, move it above the cursor
+      if (top + cardHeight + 8 > vh) {
+        top = e.clientY - cardHeight - margin;
+      }
+      // Clamp top
+      if (top < 8) top = 8;
+
+      setPreview({ name: sign.sign_name || sign.sign_code, image_url: sign.image_url, x: left, y: top });
+    }, 120);
+  };
+
+  const hidePreview = () => {
+    if (previewTimeout.current) window.clearTimeout(previewTimeout.current);
+    setPreview(null);
+  };
+
   const renderField = (fieldName: string, options: any) => {
     const label = fieldTooltips[fieldName] || fieldName;
     
@@ -96,9 +225,23 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
               {options.map((option: any) => {
                 const optionValue = hasLabelValue ? option.value : option;
                 const optionLabel = hasLabelValue ? option.label : option;
+                const hasSign = Boolean(signsMap[String(optionLabel || '').trim().toLowerCase()]);
                 return (
                   <SelectItem key={optionValue} value={optionValue}>
-                    {optionLabel}
+                    <div className="flex items-center justify-between w-full">
+                      <span>{optionLabel}</span>
+                      {hasSign && (
+                        <button
+                          type="button"
+                          onMouseEnter={(e) => showPreview(optionLabel, e as any)}
+                          onMouseLeave={hidePreview}
+                          className="ml-2 text-muted-foreground"
+                          aria-label={`Toon info over ${optionLabel}`}
+                        >
+                          <HelpCircle className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </SelectItem>
                 );
               })}
@@ -120,11 +263,23 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
             {options.options.map((option: any) => {
               const optionValue = hasLabelValue ? option.value : option;
               const optionLabel = hasLabelValue ? option.label : option;
+              const hasSign = Boolean(signsMap[String(optionLabel || '').trim().toLowerCase()]);
               return (
                 <div key={optionValue} className="flex items-center space-x-2">
                   <RadioGroupItem value={optionValue} id={`${fieldName}-${optionValue}`} />
-                  <Label htmlFor={`${fieldName}-${optionValue}`} className="font-normal">
-                    {optionLabel}
+                  <Label htmlFor={`${fieldName}-${optionValue}`} className="font-normal flex items-center gap-2">
+                    <span>{optionLabel}</span>
+                    {hasSign && (
+                      <button
+                        type="button"
+                        onMouseEnter={(e) => showPreview(optionLabel, e as any)}
+                        onMouseLeave={hidePreview}
+                        className="text-muted-foreground"
+                        aria-label={`Toon info over ${optionLabel}`}
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                      </button>
+                    )}
                   </Label>
                 </div>
               );
@@ -292,6 +447,42 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
             </pre>
           </CardContent>
         </Card>
+      )}
+
+      {/* Floating preview card */}
+      {preview && (
+        <div
+          style={{
+            position: 'fixed',
+            left: preview.x + 12,
+            top: preview.y + 12,
+            zIndex: 9999,
+            maxWidth: 320
+          }}
+          onMouseEnter={() => {
+            // keep preview open while hovering the card
+            if (previewTimeout.current) window.clearTimeout(previewTimeout.current);
+          }}
+          onMouseLeave={hidePreview}
+        >
+          <Card>
+            <CardContent className="p-4 flex flex-col items-center">
+              {preview.image_url ? (
+                <div className="w-48 h-48 overflow-hidden rounded-md bg-muted">
+                  <img
+                    src={preview.image_url}
+                    alt={preview.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    className="block"
+                  />
+                </div>
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">Geen afbeelding</div>
+              )}
+              <div className="mt-2 text-center text-sm font-medium">{preview.name}</div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
