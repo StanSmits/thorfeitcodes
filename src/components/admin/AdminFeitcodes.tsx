@@ -50,17 +50,23 @@ export function AdminFeitcodes() {
     const placeholders = extractPlaceholders(formData.template || '');
     if (!placeholders.length) return;
     setFields((current) => {
-      const existingNames = new Set(current.map((f) => f.name));
-      const additions: FieldConfig[] = [];
-      placeholders.forEach((ph) => {
-        if (!existingNames.has(ph)) {
-          // default label: capitalize and replace underscores
-          const label = ph.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-          additions.push({ name: ph, label, type: 'text', options: [] });
-        }
+      // map existing fields by name for quick lookup
+      const existingMap = new Map(current.map((f) => [f.name, f]));
+
+      // build ordered list based on placeholders order
+      const ordered: FieldConfig[] = placeholders.map((ph) => {
+        const existing = existingMap.get(ph);
+        if (existing) return existing;
+        const label = ph.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        return { name: ph, label, type: 'text', options: [] };
       });
-      if (additions.length === 0) return current;
-      return [...current, ...additions];
+
+      // append any existing fields that are not present in the template (preserve their current order)
+      current.forEach((f) => {
+        if (!placeholders.includes(f.name)) ordered.push(f);
+      });
+
+      return ordered;
     });
   }, [formData.template]);
 

@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export function AdminRoadSigns() {
   const queryClient = useQueryClient();
@@ -108,6 +109,8 @@ export function AdminRoadSigns() {
     e.preventDefault();
     saveMutation.mutate(formData);
   };
+
+  const { isAdmin, isModerator } = useAuth();
 
   return (
     <div className="space-y-4">
@@ -232,6 +235,7 @@ export function AdminRoadSigns() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          disabled={!isAdmin && isModerator}
                           onClick={() => {
                             if (confirm('Weet u zeker dat u dit verkeersteken wilt verwijderen?')) {
                               deleteMutation.mutate(sign.id);

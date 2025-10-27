@@ -6,9 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Check, X } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export function AdminSuggestions() {
   const queryClient = useQueryClient();
+  const { isAdmin, isModerator } = useAuth();
+
 
   const { data: suggestions, isLoading } = useQuery({
     queryKey: ['admin-suggestions'],
@@ -147,6 +150,7 @@ export function AdminSuggestions() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          disabled={!isAdmin && isModerator}
                           onClick={() => {
                             if (confirm('Weet u zeker dat u deze suggestie wilt verwijderen?')) {
                               deleteMutation.mutate(suggestion.id);
