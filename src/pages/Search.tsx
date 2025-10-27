@@ -121,7 +121,7 @@ export default function Search() {
                           id="suggested-code"
                           value={suggestedCode}
                           onChange={(e) => setSuggestedCode(e.target.value)}
-                          placeholder="Bijv. 87 WVW 1994"
+                          placeholder="Bijv. R315b"
                         />
                       </div>
                       <div className="space-y-2">
