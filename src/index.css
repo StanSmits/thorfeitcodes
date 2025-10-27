@@ -2,89 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --amsterdam-red: #ec0000;
-  --amsterdam-red-dark: #cc0000;
-  --amsterdam-blue: #004699;
-}
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
 
-html {
-  scroll-behavior: smooth;
-}
+@layer base {
+  :root {
+    /* Professional Law Enforcement Theme - Blue/Navy */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
 
-body {
-  font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-@layer components {
-  .btn-primary {
-    @apply bg-[#ec0000] text-white px-4 py-2 rounded hover:bg-[#cc0000] transition duration-300 font-medium;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 214 84% 32%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 92%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 217 92% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 214 84% 32%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 214 84% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 27%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 215 25% 20%;
+    --sidebar-ring: 217 92% 48%;
   }
 
-  .btn-secondary {
-    @apply bg-white text-[#ec0000] border border-[#ec0000] px-4 py-2 rounded hover:bg-gray-50 transition duration-300 font-medium;
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 215 25% 16%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 215 25% 16%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 92% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 25% 27%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 215 25% 27%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 92% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 215 25% 27%;
+    --input: 215 25% 27%;
+    --ring: 217 92% 48%;
+
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 92% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 20%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 215 25% 15%;
+    --sidebar-ring: 217 92% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
   }
 
-  .input-primary {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#ec0000] transition duration-300;
+  body {
+    @apply bg-background text-foreground;
   }
-
-  .editable-field {
-    @apply bg-yellow-50 px-2 py-1 rounded border border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400;
-  }
-}
-
-.search-input-container {
-  position: relative;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.search-results {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 50;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.template-container {
-  position: relative;
-  max-width: 800px;
-  margin: 2rem auto 0;
-  padding: 1.5rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.template-container.active {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.template-field {
-  margin-bottom: 0.5rem;
-}
-
-.editable-content {
-  border-bottom: 2px dashed #f59e0b;
-  padding: 0 0.25rem;
-  min-width: 2rem;
-  display: inline-block;
-}
-
-.fixed-content {
-  color: #111827;
-}
-
-.copy-button {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
 }
