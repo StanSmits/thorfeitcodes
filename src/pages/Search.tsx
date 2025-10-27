@@ -1,15 +1,24 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search as SearchIcon, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Search as SearchIcon, FileText, Plus } from 'lucide-react';
 import { RVWGenerator } from '@/components/RVWGenerator';
+import { toast } from '@/hooks/use-toast';
 
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFactcode, setSelectedFactcode] = useState<any>(null);
+  const [suggestDialogOpen, setSuggestDialogOpen] = useState(false);
+  const [suggestedCode, setSuggestedCode] = useState('');
+  const [suggestedDescription, setSuggestedDescription] = useState('');
+  const queryClient = useQueryClient();
 
   const { data: feitcodes, isLoading } = useQuery({
     queryKey: ['feitcodes', searchTerm],
@@ -26,6 +35,35 @@ export default function Search() {
       const { data, error } = await query.limit(9);
       if (error) throw error;
       return data;
+    },
+  });
+
+  const suggestMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('factcode_suggestions')
+        .insert({
+          suggested_code: suggestedCode,
+          description: suggestedDescription,
+          status: 'pending',
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Suggestie ingediend',
+        description: 'Uw suggestie is ingediend en wordt beoordeeld door een beheerder.',
+      });
+      setSuggestDialogOpen(false);
+      setSuggestedCode('');
+      setSuggestedDescription('');
+    },
+    onError: () => {
+      toast({
+        title: 'Fout',
+        description: 'Er is een fout opgetreden bij het indienen van uw suggestie.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -58,9 +96,55 @@ export default function Search() {
             {isLoading ? (
               <p className="col-span-full text-center text-muted-foreground">Laden...</p>
             ) : feitcodes?.length === 0 ? (
-              <p className="col-span-full text-center text-muted-foreground">
-                Geen feitcodes gevonden
-              </p>
+              <div className="col-span-full text-center space-y-4">
+                <p className="text-muted-foreground">
+                  Geen feitcodes gevonden
+                </p>
+                <Dialog open={suggestDialogOpen} onOpenChange={setSuggestDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Suggereer een feitcode
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Feitcode suggereren</DialogTitle>
+                      <DialogDescription>
+                        Stuur een suggestie voor een nieuwe feitcode. Deze wordt beoordeeld door een beheerder.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="suggested-code">Feitcode</Label>
+                        <Input
+                          id="suggested-code"
+                          value={suggestedCode}
+                          onChange={(e) => setSuggestedCode(e.target.value)}
+                          placeholder="Bijv. 87 WVW 1994"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="suggested-description">Omschrijving</Label>
+                        <Textarea
+                          id="suggested-description"
+                          value={suggestedDescription}
+                          onChange={(e) => setSuggestedDescription(e.target.value)}
+                          placeholder="Omschrijving van de feitcode"
+                          rows={4}
+                        />
+                      </div>
+                      <Button
+                        onClick={() => suggestMutation.mutate()}
+                        disabled={!suggestedCode.trim() || !suggestedDescription.trim() || suggestMutation.isPending}
+                        className="w-full"
+                      >
+                        {suggestMutation.isPending ? 'Versturen...' : 'Verstuur suggestie'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             ) : (
               feitcodes?.sort((a, b) => b.access_count - a.access_count).map((code) => (
                 <Card

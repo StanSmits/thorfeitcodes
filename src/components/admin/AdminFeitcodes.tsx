@@ -20,7 +20,12 @@ interface FieldConfig {
   options?: { label: string; value: string }[];
 }
 
-export function AdminFeitcodes() {
+interface AdminFeitcodesProps {
+  prefillData?: any;
+  onClearPrefill?: () => void;
+}
+
+export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesProps) {
   const queryClient = useQueryClient();
   const { isAdmin, isModerator } = useAuth();
   const [open, setOpen] = useState(false);
@@ -32,6 +37,51 @@ export function AdminFeitcodes() {
     template: '',
   });
   const [fields, setFields] = useState<FieldConfig[]>([]);
+
+  // Handle prefill data from approved suggestions
+  useEffect(() => {
+    if (prefillData) {
+      setFormData({
+        factcode: prefillData.factcode || '',
+        description: prefillData.description || '',
+        template: prefillData.template || '',
+      });
+      
+      // Convert field_options to FieldConfig array if provided
+      if (prefillData.field_options) {
+        const fieldOptions = prefillData.field_options;
+        const convertedFields: FieldConfig[] = [];
+        
+        Object.keys(fieldOptions).forEach(fieldName => {
+          const option = fieldOptions[fieldName];
+          const field: FieldConfig = {
+            name: fieldName,
+            label: fieldName.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            type: 'text',
+            options: []
+          };
+          
+          if (Array.isArray(option)) {
+            field.type = 'dropdown';
+            field.options = option;
+          } else if (typeof option === 'object' && option.type === 'radio') {
+            field.type = 'radio';
+            field.options = option.options || [];
+          }
+          
+          convertedFields.push(field);
+        });
+        
+        setFields(convertedFields);
+      }
+      
+      setOpen(true);
+      
+      if (onClearPrefill) {
+        onClearPrefill();
+      }
+    }
+  }, [prefillData, onClearPrefill]);
 
   // helper: extract placeholders like {veldnaam} from template
   const extractPlaceholders = (template: string) => {

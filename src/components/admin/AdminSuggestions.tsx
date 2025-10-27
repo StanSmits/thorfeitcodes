@@ -5,10 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Check, X } from 'lucide-react';
+import { Check, X, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-export function AdminSuggestions() {
+interface AdminSuggestionsProps {
+  onApprove?: (suggestion: any) => void;
+}
+
+export function AdminSuggestions({ onApprove }: AdminSuggestionsProps) {
   const queryClient = useQueryClient();
   const { isAdmin, isModerator } = useAuth();
 
@@ -16,14 +20,28 @@ export function AdminSuggestions() {
   const { data: suggestions, isLoading } = useQuery({
     queryKey: ['admin-suggestions'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch pending suggestions (only required columns)
+      const { data: suggestionsData, error: suggestionsError } = await supabase
         .from('factcode_suggestions')
-        .select('*')
-        .is('deleted_at', null)
+        .select('id, suggested_code, description, created_at, status')
         .eq('status', 'pending')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+
+      if (suggestionsError) throw suggestionsError;
+
+      // Fetch existing factcodes to exclude suggestions that already exist
+      const { data: existingFactcodes = [], error: factcodesError } = await supabase
+        .from('feitcodes')
+        .select('factcode')
+        .is('deleted_at', null);
+
+      if (factcodesError) throw factcodesError;
+
+      const existingSet = new Set((existingFactcodes as any[]).map((f) => String(f.factcode)));
+
+      // Return only suggestions whose suggested_code is not present in feitcodes
+      return (suggestionsData || []).filter((s: any) => !existingSet.has(String(s.suggested_code)));
     },
   });
 
@@ -118,19 +136,18 @@ export function AdminSuggestions() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         {suggestion.status !== 'approved' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              updateStatusMutation.mutate({
-                                id: suggestion.id,
-                                status: 'approved',
-                              })
-                            }
-                            title="Goedkeuren"
-                          >
-                            <Check className="h-4 w-4 text-green-600" />
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                onApprove(suggestion);
+                              }}
+                              title="Goedkeuren en feitcode aanmaken"
+                            >
+                              <Plus className="h-4 w-4 text-green-600" />
+                            </Button>
+                          </>
                         )}
                         {suggestion.status !== 'rejected' && (
                           <Button
@@ -147,19 +164,6 @@ export function AdminSuggestions() {
                             <X className="h-4 w-4 text-red-600" />
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={!isAdmin && isModerator}
-                          onClick={() => {
-                            if (confirm('Weet u zeker dat u deze suggestie wilt verwijderen?')) {
-                              deleteMutation.mutate(suggestion.id);
-                            }
-                          }}
-                          title="Verwijderen"
-                        >
-                          <X className="h-4 w-4 text-destructive" />
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
