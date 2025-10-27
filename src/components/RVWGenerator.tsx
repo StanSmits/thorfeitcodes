@@ -160,7 +160,7 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
     }
 
     // anders
-    return `Ik kon de betrokkene niet staande houden omdat ${andersText || ''}`;
+    return `Ik kon de betrokkene niet staande houden omdat ${andersText === '' ? '{vul hier in waarom je de betrokkene niet heb staande gehouden}' : andersText}`;
   }, [isStopped, notStoppedReason, andersText, factcode.factcode]);
 
   const fullGeneratedText = useMemo(() => {
@@ -445,7 +445,13 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
                   {notStoppedReason === 'anders' && (
                     <div>
                       <Label htmlFor="anders-text">Toelichting (anders)</Label>
-                      <Input id="anders-text" value={andersText} onChange={(e) => setAndersText(e.target.value)} placeholder="Vul hier de reden in" />
+                      <Input
+                        id="anders-text"
+                        value={andersText}
+                        onChange={(e) => setAndersText(e.target.value)}
+                        placeholder="Vul hier de reden in"
+                        className={andersText.trim() === '' ? 'bg-yellow-200 dark:bg-yellow-900/50' : '' + ' duration-300'}
+                      />
                     </div>
                   )}
                 </div>
