@@ -17,6 +17,9 @@ interface RVWGeneratorProps {
 export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const [isStopped, setIsStopped] = useState<boolean>(false);
+  const [notStoppedReason, setNotStoppedReason] = useState<'geen_bestuurder' | 'anders'>('geen_bestuurder');
+  const [andersText, setAndersText] = useState<string>('');
   const previewTimeout = useRef<number | null>(null);
   // Map keyed by lowercased sign_code -> sign record
   const [signsMap, setSignsMap] = useState<Record<string, any>>({});
@@ -146,6 +149,25 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
     return result;
   }, [formValues, factcode.template]);
 
+  const reasonPrefix = useMemo(() => {
+    if (isStopped) {
+      return `Ik heb de persoon staande gehouden inzake ${factcode.factcode}`;
+    }
+
+    // not stopped
+    if (notStoppedReason === 'geen_bestuurder') {
+      return 'Ik kon de betrokkene niet staande houden omdat er gedurende de gehele casus geen activiteiten in of om het voertuig heb waargenomen.  Daarnaast kwam er gedurende de gehele casus geen betrokkene bij mij zich melden alszijnde bestuurder';
+    }
+
+    // anders
+    return `Ik kon de betrokkene niet staande houden omdat ${andersText || ''}`;
+  }, [isStopped, notStoppedReason, andersText, factcode.factcode]);
+
+  const fullGeneratedText = useMemo(() => {
+    const prefix = reasonPrefix ? `${reasonPrefix}\n\n` : '';
+    return `${prefix}${generatedText}`;
+  }, [reasonPrefix, generatedText]);
+
   // Update form value and auto-generate
   const updateFormValue = (fieldName: string, value: string) => {
     setFormValues(prev => ({ ...prev, [fieldName]: value }));
@@ -153,7 +175,7 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
 
   const handleCopy = () => {
     // Copy the clean version without highlighting
-    const cleanText = generatedText.replace(/\{[^}]+\}/g, (match) => match);
+    const cleanText = fullGeneratedText.replace(/\{[^}]+\}/g, (match) => match);
     navigator.clipboard.writeText(cleanText);
     setCopied(true);
     toast({
@@ -361,8 +383,10 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
   };
 
   const hasUnfilledFields = useMemo(() => {
-    return orderedFields.some(field => !formValues[field] || formValues[field].trim() === '');
-  }, [orderedFields, formValues]);
+    const missingField = orderedFields.some(field => !formValues[field] || formValues[field].trim() === '');
+    const missingAnders = !isStopped && notStoppedReason === 'anders' && (!andersText || andersText.trim() === '');
+    return missingField || missingAnders;
+  }, [orderedFields, formValues, isStopped, notStoppedReason, andersText]);
 
   return (
     <div className="space-y-6">
@@ -393,6 +417,40 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
               }
               return renderField(fieldName, options);
             })}
+
+            <div className="space-y-3">
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={isStopped}
+                  onChange={(e) => setIsStopped(e.target.checked)}
+                  className="h-4 w-4 rounded border"
+                />
+                <span>Is de persoon staande gehouden?</span>
+              </label>
+
+              {!isStopped && (
+                <div className="space-y-2">
+                  <Label>Reden waarom de persoon niet is staande gehouden</Label>
+                  <Select value={notStoppedReason} onValueChange={(v) => setNotStoppedReason(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="geen_bestuurder">Geen bestuurder</SelectItem>
+                      <SelectItem value="anders">Anders, namelijk</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {notStoppedReason === 'anders' && (
+                    <div>
+                      <Label htmlFor="anders-text">Toelichting (anders)</Label>
+                      <Input id="anders-text" value={andersText} onChange={(e) => setAndersText(e.target.value)} placeholder="Vul hier de reden in" />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -406,6 +464,10 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
           <CardContent className="space-y-4">
             <div className="relative min-h-[300px] rounded-md border border-border bg-background p-4">
               {renderGeneratedTextWithHighlights()}
+              <br />
+              {reasonPrefix && (
+                <div className="whitespace-pre-wrap mb-3 font-medium">{reasonPrefix}</div>
+              )}
             </div>
             {hasUnfilledFields && (
               <div className="flex items-center gap-2 text-sm text-yellow-600 dark:text-yellow-400">
@@ -415,7 +477,7 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
             )}
             <Button
               onClick={handleCopy}
-              disabled={!generatedText}
+              disabled={!fullGeneratedText}
               className="w-full"
               variant="secondary"
             >
@@ -445,6 +507,19 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
             <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">
               {factcode.template}
             </pre>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bottom: show the stopping text (reason) again as requested */}
+      {reasonPrefix && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Opmerking staande houding</CardTitle>
+            <CardDescription>De door u gekozen tekst over het staande houden</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">{reasonPrefix}</pre>
           </CardContent>
         </Card>
       )}
