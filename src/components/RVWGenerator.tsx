@@ -565,6 +565,22 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
           </Card>
         </div>
       )}
+
+      {/* Mobile floating copy button (bottom-right) */}
+      <div className="md:hidden">
+        <div className="fixed z-50 bottom-4 right-4">
+          <Button
+            onClick={handleCopy}
+            disabled={!fullGeneratedText}
+            size="icon"
+            variant="secondary"
+            aria-label="Kopieer RVW"
+            className="shadow-lg"
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
