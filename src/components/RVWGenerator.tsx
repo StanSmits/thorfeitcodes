@@ -165,7 +165,7 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
 
   const fullGeneratedText = useMemo(() => {
     const prefix = reasonPrefix ? `${reasonPrefix}\n\n` : '';
-    return `${prefix}${generatedText}`;
+    return `${generatedText}\n${prefix}`;
   }, [reasonPrefix, generatedText]);
 
   // Update form value and auto-generate
