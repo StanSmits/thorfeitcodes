@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
@@ -35,6 +36,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     factcode: '',
     description: '',
     template: '',
+    location_field: '',
   });
   const [fields, setFields] = useState<FieldConfig[]>([]);
 
@@ -45,6 +47,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
         factcode: prefillData.factcode || '',
         description: prefillData.description || '',
         template: prefillData.template || '',
+        location_field: prefillData.location_field || '',
       });
       
       // Convert field_options to FieldConfig array if provided
@@ -168,6 +171,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
         ...formData,
         field_options,
         field_tooltips,
+        location_field: formData.location_field || null,
       };
 
       if (editingCode) {
@@ -218,6 +222,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     setFormData({
       factcode: '',
       description: '',
+      location_field: '',
       template: '',
     });
     setFields([]);
@@ -229,6 +234,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
       factcode: code.factcode,
       description: code.description || '',
       template: code.template || '',
+      location_field: code.location_field || '',
     });
     
     // Convert field_options and field_tooltips back to FieldConfig array
@@ -368,6 +374,29 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
                 <p className="text-xs text-muted-foreground">
                   Tip: Gebruik {`{veldnaam}`} waar gebruikers iets moeten invullen. Velden worden
                   automatisch toegevoegd op basis van deze placeholders.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location_field">Locatie veld (voor opslaan recente RvW's)</Label>
+                <Select
+                  value={formData.location_field || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, location_field: value === '__none__' ? '' : value })}
+                >
+                  <SelectTrigger id="location_field">
+                    <SelectValue placeholder="Selecteer het veld dat de locatie bevat" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Geen locatie veld</SelectItem>
+                    {fields.map((field) => (
+                      <SelectItem key={field.name} value={field.name}>
+                        {field.label} ({field.name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Selecteer welk veld gebruikt moet worden als hoofdlocatie voor het opslaan van recente RvW's.
                 </p>
               </div>
 

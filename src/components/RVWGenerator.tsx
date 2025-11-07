@@ -1,35 +1,68 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Copy, Check, HelpCircle } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useState, useEffect, useMemo, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Copy, Check, HelpCircle, ChevronRight } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { deepEqual } from "@/lib/utils";
 
 interface RVWGeneratorProps {
   factcode: any;
   onBack: () => void;
+  initialFormValues?: Record<string, string>;
 }
 
-export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
+export function RVWGenerator({
+  factcode,
+  onBack,
+  initialFormValues,
+}: RVWGeneratorProps) {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
   const [isStopped, setIsStopped] = useState<boolean>(false);
-  const [notStoppedReason, setNotStoppedReason] = useState<'geen_bestuurder' | 'anders'>('geen_bestuurder');
-  const [andersText, setAndersText] = useState<string>('');
+  const [notStoppedReason, setNotStoppedReason] = useState<
+    "geen_bestuurder" | "anders"
+  >("geen_bestuurder");
+  const [andersText, setAndersText] = useState<string>("");
   const previewTimeout = useRef<number | null>(null);
   // Map keyed by lowercased sign_code -> sign record
   const [signsMap, setSignsMap] = useState<Record<string, any>>({});
   // Hover preview state (positioned near cursor)
-  const [preview, setPreview] = useState<null | { name: string; image_url?: string; x: number; y: number }>(null);
+  const [preview, setPreview] = useState<null | {
+    name: string;
+    image_url?: string;
+    x: number;
+    y: number;
+  }>(null);
+  // Recent RvWs for the current location
+  const [recentRvws, setRecentRvws] = useState<any[]>([]);
+
+  const currentPrefill = useMemo(() => {
+    return initialFormValues ?? formValues;
+  }, [initialFormValues, formValues]);
 
   useEffect(() => {
     // Increment access count
     const incrementCount = async () => {
-      await supabase.rpc('increment_access_count', { item_id: factcode.factcode });
+      await supabase.rpc("increment_access_count", {
+        item_id: factcode.factcode,
+      });
     };
     incrementCount();
   }, [factcode.factcode]);
@@ -45,13 +78,15 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
       if (!opts) return;
       if (Array.isArray(opts)) {
         opts.forEach((o: any) => {
-          if (o && typeof o === 'object' && 'label' in o) names.add(String(o.label).trim());
-          else if (typeof o === 'string') names.add(String(o).trim());
+          if (o && typeof o === "object" && "label" in o)
+            names.add(String(o.label).trim());
+          else if (typeof o === "string") names.add(String(o).trim());
         });
-      } else if (typeof opts === 'object' && opts.type === 'radio') {
+      } else if (typeof opts === "object" && opts.type === "radio") {
         (opts.options || []).forEach((o: any) => {
-          if (o && typeof o === 'object' && 'label' in o) names.add(String(o.label).trim());
-          else if (typeof o === 'string') names.add(String(o).trim());
+          if (o && typeof o === "object" && "label" in o)
+            names.add(String(o.label).trim());
+          else if (typeof o === "string") names.add(String(o).trim());
         });
       }
     };
@@ -64,12 +99,12 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
       try {
         // First try exact matches (minimal and fast) matching on sign_code
         const { data: exactData, error: exactError } = await (supabase as any)
-          .from('road_signs')
-          .select('sign_code, sign_name, description, image_url')
-          .in('sign_code', toFetch);
+          .from("road_signs")
+          .select("sign_code, sign_name, description, image_url")
+          .in("sign_code", toFetch);
 
         if (exactError) {
-          console.error('Failed to fetch exact sign matches', exactError);
+          console.error("Failed to fetch exact sign matches", exactError);
           return;
         }
 
@@ -83,21 +118,25 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
           }
         });
 
-  // Determine missing labels (case-insensitive)
-  const missing = toFetch.filter(t => !matchedLower.has(String(t).trim().toLowerCase()));
+        // Determine missing labels (case-insensitive)
+        const missing = toFetch.filter(
+          (t) => !matchedLower.has(String(t).trim().toLowerCase())
+        );
 
         if (missing.length > 0) {
           // Build OR ilike query for the missing labels to capture case-insensitive matches
           // Use exact ilike on the whole string to avoid partial matches
-          const orParts = missing.map((m) => `sign_code.ilike.'${String(m).replace(/'/g, "''")}'`);
-          const orQuery = orParts.join(',');
+          const orParts = missing.map(
+            (m) => `sign_code.ilike.'${String(m).replace(/'/g, "''")}'`
+          );
+          const orQuery = orParts.join(",");
           const { data: ilikeData, error: ilikeError } = await (supabase as any)
-            .from('road_signs')
-            .select('sign_code, sign_name, description, image_url')
+            .from("road_signs")
+            .select("sign_code, sign_name, description, image_url")
             .or(orQuery);
 
           if (ilikeError) {
-            console.error('Failed to fetch ilike sign matches', ilikeError);
+            console.error("Failed to fetch ilike sign matches", ilikeError);
           } else {
             (ilikeData || []).forEach((s: any) => {
               if (s?.sign_code) {
@@ -110,7 +149,7 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
 
         setSignsMap(map);
       } catch (err) {
-        console.error('Error fetching signs', err);
+        console.error("Error fetching signs", err);
       }
     };
 
@@ -118,19 +157,61 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
     // We only want to re-run when the field options object identity changes
   }, [factcode.field_options]);
 
+  // Fetch recent RvWs when component loads or location value changes
+  useEffect(() => {
+    const locationField = factcode.location_field;
+    if (!locationField) {
+      setRecentRvws([]);
+      return;
+    }
+
+    const fetchRecentRvws = async () => {
+      try {
+        // Fetch all recent RvWs for this factcode, grouped by location
+        const { data, error } = await supabase
+          .from("saved_rvws")
+          .select("*")
+          .eq("factcode", factcode.factcode)
+          .order("created_at", { ascending: false })
+          .limit(50); // Get more to find unique locations
+
+        if (error) {
+          console.error("Failed to fetch recent RvWs", error);
+          return;
+        }
+
+        // Group by location and keep only the 3 most recent unique locations
+        const locationMap = new Map();
+        (data || []).forEach((rvw: any) => {
+          if (!locationMap.has(rvw.location_value)) {
+            locationMap.set(rvw.location_value, rvw);
+          }
+        });
+
+        // Get first 3 unique locations
+        const uniqueLocations = Array.from(locationMap.values()).slice(0, 3);
+        setRecentRvws(uniqueLocations);
+      } catch (err) {
+        console.error("Error fetching recent RvWs", err);
+      }
+    };
+
+    fetchRecentRvws();
+  }, [factcode.factcode, factcode.location_field]);
+
   const fieldOptions = factcode.field_options || {};
   const fieldTooltips = factcode.field_tooltips || {};
 
   // Extract field names from template in order of appearance
   const orderedFields = useMemo(() => {
-    const template = factcode.template || '';
+    const template = factcode.template || "";
     const matches = template.match(/\{([^}]+)\}/g);
     if (!matches) return [];
-    
+
     const seen = new Set<string>();
     return matches
-      .map(match => match.slice(1, -1))
-      .filter(field => {
+      .map((match) => match.slice(1, -1))
+      .filter((field) => {
         if (seen.has(field)) return false;
         seen.add(field);
         return true;
@@ -139,11 +220,14 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
 
   // Auto-generate text as form values change
   const generatedText = useMemo(() => {
-    let result = factcode.template || '';
-    
+    let result = factcode.template || "";
+
     Object.entries(formValues).forEach(([key, value]) => {
       const placeholder = `{${key}}`;
-      result = result.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
+      result = result.replace(
+        new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
+        value
+      );
     });
 
     return result;
@@ -155,12 +239,16 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
     }
 
     // not stopped
-    if (notStoppedReason === 'geen_bestuurder') {
-      return 'Ik kon de betrokkene niet staande houden omdat er gedurende de gehele casus geen activiteiten in of om het voertuig heb waargenomen.  Daarnaast kwam er gedurende de gehele casus geen betrokkene bij mij zich melden alszijnde bestuurder';
+    if (notStoppedReason === "geen_bestuurder") {
+      return "Ik kon de betrokkene niet staande houden omdat er gedurende de gehele casus geen activiteiten in of om het voertuig heb waargenomen.  Daarnaast kwam er gedurende de gehele casus geen betrokkene bij mij zich melden alszijnde bestuurder";
     }
 
     // anders
-    return `Ik kon de betrokkene niet staande houden omdat ${andersText === '' ? '{vul hier in waarom je de betrokkene niet heb staande gehouden}' : andersText}`;
+    return `Ik kon de betrokkene niet staande houden omdat ${
+      andersText === ""
+        ? "{vul hier in waarom je de betrokkene niet heb staande gehouden}"
+        : andersText
+    }`;
   }, [isStopped, notStoppedReason, andersText, factcode.factcode]);
 
   const fullGeneratedText = useMemo(() => {
@@ -170,10 +258,17 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
 
   // Update form value and auto-generate
   const updateFormValue = (fieldName: string, value: string) => {
-    setFormValues(prev => ({ ...prev, [fieldName]: value }));
+    setFormValues((prev) => ({ ...prev, [fieldName]: value }));
   };
 
-  const handleCopy = () => {
+  // If parent provides initial form values (via navigation prefill), apply them
+  useEffect(() => {
+    if (initialFormValues) {
+      setFormValues(initialFormValues);
+    }
+  }, [initialFormValues]);
+
+  const handleCopy = async () => {
     // Copy the clean version without highlighting
     const cleanText = fullGeneratedText.replace(/\{[^}]+\}/g, (match) => match);
     navigator.clipboard.writeText(cleanText);
@@ -183,10 +278,70 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
       description: "De tekst is naar het klembord gekopieerd.",
     });
     setTimeout(() => setCopied(false), 2000);
+
+    // Save the RvW if location field is configured
+    const locationField = factcode.location_field;
+    if (locationField) {
+      const locationValue = formValues[locationField];
+      if (locationValue && locationValue.trim() !== "") {
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          await supabase.from("saved_rvws").insert({
+            user_id: user?.id || null,
+            factcode: factcode.factcode,
+            location_value: locationValue.trim(),
+            form_values: formValues,
+            generated_text: cleanText,
+          });
+        } catch (err) {
+          console.error("Failed to save RvW", err);
+        }
+      }
+    }
+  };
+
+  const loadRecentRvw = async (rvw: any) => {
+    if (rvw.form_values) {
+      setFormValues(rvw.form_values);
+
+      // Update the timestamp by re-saving with current time
+      try {
+        await supabase
+          .from("saved_rvws")
+          .update({ created_at: new Date().toISOString() })
+          .eq("id", rvw.id);
+
+        // Refresh the list
+        const locationField = factcode.location_field;
+        if (locationField) {
+          const locationValue = rvw.location_value;
+          const { data } = await supabase
+            .from("saved_rvws")
+            .select("*")
+            .eq("factcode", factcode.factcode)
+            .eq("location_value", locationValue)
+            .order("created_at", { ascending: false })
+            .limit(3);
+          setRecentRvws(data || []);
+        }
+      } catch (err) {
+        console.error("Failed to update timestamp", err);
+      }
+
+      toast({
+        title: "RvW geladen",
+        description: "De opgeslagen RvW is geladen.",
+      });
+    }
   };
 
   const showPreview = (label: string, e: React.MouseEvent) => {
-    const key = String(label || '').trim().toLowerCase();
+    const key = String(label || "")
+      .trim()
+      .toLowerCase();
     const sign = signsMap[key];
     if (!sign) return;
     if (previewTimeout.current) window.clearTimeout(previewTimeout.current);
@@ -216,7 +371,12 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
       // Clamp top
       if (top < 8) top = 8;
 
-      setPreview({ name: sign.sign_name || sign.sign_code, image_url: sign.image_url, x: left, y: top });
+      setPreview({
+        name: sign.sign_name || sign.sign_code,
+        image_url: sign.image_url,
+        x: left,
+        y: top,
+      });
     }, 120);
   };
 
@@ -227,17 +387,20 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
 
   const renderField = (fieldName: string, options: any) => {
     const label = fieldTooltips[fieldName] || fieldName;
-    
+
     if (Array.isArray(options)) {
       // Check if options have label/value structure
-      const hasLabelValue = options.length > 0 && typeof options[0] === 'object' && 'label' in options[0];
-      
+      const hasLabelValue =
+        options.length > 0 &&
+        typeof options[0] === "object" &&
+        "label" in options[0];
+
       // Dropdown
       return (
         <div key={fieldName} className="space-y-2">
           <Label htmlFor={fieldName}>{label}</Label>
           <Select
-            value={formValues[fieldName] || ''}
+            value={formValues[fieldName] || ""}
             onValueChange={(value) => updateFormValue(fieldName, value)}
           >
             <SelectTrigger id={fieldName}>
@@ -247,7 +410,13 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
               {options.map((option: any) => {
                 const optionValue = hasLabelValue ? option.value : option;
                 const optionLabel = hasLabelValue ? option.label : option;
-                const hasSign = Boolean(signsMap[String(optionLabel || '').trim().toLowerCase()]);
+                const hasSign = Boolean(
+                  signsMap[
+                    String(optionLabel || "")
+                      .trim()
+                      .toLowerCase()
+                  ]
+                );
                 return (
                   <SelectItem key={optionValue} value={optionValue}>
                     <div className="flex items-center justify-between w-full">
@@ -255,7 +424,9 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
                       {hasSign && (
                         <button
                           type="button"
-                          onMouseEnter={(e) => showPreview(optionLabel, e as any)}
+                          onMouseEnter={(e) =>
+                            showPreview(optionLabel, e as any)
+                          }
                           onMouseLeave={hidePreview}
                           className="ml-2 text-muted-foreground"
                           aria-label={`Toon info over ${optionLabel}`}
@@ -271,25 +442,40 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
           </Select>
         </div>
       );
-    } else if (typeof options === 'object' && options.type === 'radio') {
-      const hasLabelValue = options.options?.length > 0 && typeof options.options[0] === 'object' && 'label' in options.options[0];
-      
+    } else if (typeof options === "object" && options.type === "radio") {
+      const hasLabelValue =
+        options.options?.length > 0 &&
+        typeof options.options[0] === "object" &&
+        "label" in options.options[0];
+
       // Radio buttons
       return (
         <div key={fieldName} className="space-y-3">
           <Label>{label}</Label>
           <RadioGroup
-            value={formValues[fieldName] || ''}
+            value={formValues[fieldName] || ""}
             onValueChange={(value) => updateFormValue(fieldName, value)}
           >
             {options.options.map((option: any) => {
               const optionValue = hasLabelValue ? option.value : option;
               const optionLabel = hasLabelValue ? option.label : option;
-              const hasSign = Boolean(signsMap[String(optionLabel || '').trim().toLowerCase()]);
+              const hasSign = Boolean(
+                signsMap[
+                  String(optionLabel || "")
+                    .trim()
+                    .toLowerCase()
+                ]
+              );
               return (
                 <div key={optionValue} className="flex items-center space-x-2">
-                  <RadioGroupItem value={optionValue} id={`${fieldName}-${optionValue}`} />
-                  <Label htmlFor={`${fieldName}-${optionValue}`} className="font-normal flex items-center gap-2">
+                  <RadioGroupItem
+                    value={optionValue}
+                    id={`${fieldName}-${optionValue}`}
+                  />
+                  <Label
+                    htmlFor={`${fieldName}-${optionValue}`}
+                    className="font-normal flex items-center gap-2"
+                  >
                     <span>{optionLabel}</span>
                     {hasSign && (
                       <button
@@ -316,7 +502,7 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
           <Label htmlFor={fieldName}>{label}</Label>
           <Input
             id={fieldName}
-            value={formValues[fieldName] || ''}
+            value={formValues[fieldName] || ""}
             onChange={(e) => updateFormValue(fieldName, e.target.value)}
             placeholder={`Voer ${label.toLowerCase()} in`}
           />
@@ -327,7 +513,7 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
 
   // Render generated text with highlighted unfilled fields
   const renderGeneratedTextWithHighlights = () => {
-    const template = factcode.template || '';
+    const template = factcode.template || "";
     const parts: JSX.Element[] = [];
     let lastIndex = 0;
     const placeholderRegex = /\{([^}]+)\}/g;
@@ -337,7 +523,7 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
     while ((match = placeholderRegex.exec(template)) !== null) {
       const fieldName = match[1];
       const matchStart = match.index;
-      
+
       // Add text before placeholder
       if (matchStart > lastIndex) {
         parts.push(
@@ -346,12 +532,12 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
           </span>
         );
       }
-      
+
       // Add placeholder or value with highlighting
       const value = formValues[fieldName];
-      if (!value || value.trim() === '') {
+      if (!value || value.trim() === "") {
         parts.push(
-          <span 
+          <span
             key={`field-${key++}`}
             className="bg-yellow-200 dark:bg-yellow-900/50 px-1 rounded font-semibold"
             title={`Vul "${fieldTooltips[fieldName] || fieldName}" in`}
@@ -360,33 +546,43 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
           </span>
         );
       } else {
-        parts.push(
-          <span key={`field-${key++}`}>
-            {value}
-          </span>
-        );
+        parts.push(<span key={`field-${key++}`}>{value}</span>);
       }
-      
+
       lastIndex = matchStart + match[0].length;
     }
-    
+
     // Add remaining text
     if (lastIndex < template.length) {
       parts.push(
-        <span key={`text-${key++}`}>
-          {template.substring(lastIndex)}
-        </span>
+        <span key={`text-${key++}`}>{template.substring(lastIndex)}</span>
       );
     }
-    
+
     return <div className="whitespace-pre-wrap">{parts}</div>;
   };
 
   const hasUnfilledFields = useMemo(() => {
-    const missingField = orderedFields.some(field => !formValues[field] || formValues[field].trim() === '');
-    const missingAnders = !isStopped && notStoppedReason === 'anders' && (!andersText || andersText.trim() === '');
+    const missingField = orderedFields.some(
+      (field) => !formValues[field] || formValues[field].trim() === ""
+    );
+    const missingAnders =
+      !isStopped &&
+      notStoppedReason === "anders" &&
+      (!andersText || andersText.trim() === "");
     return missingField || missingAnders;
   }, [orderedFields, formValues, isStopped, notStoppedReason, andersText]);
+
+  const filteredRecentRvws = useMemo(() => {
+    return recentRvws.filter((rvw) => {
+      // Exclude if saved form_values deep-equals current prefill
+      if (deepEqual(rvw.form_values, currentPrefill)) return false;
+      // Also exclude if generated_text matches the current full generated text
+      if (rvw.generated_text && rvw.generated_text === fullGeneratedText)
+        return false;
+      return true;
+    });
+  }, [recentRvws, currentPrefill, fullGeneratedText]);
 
   return (
     <div className="space-y-6">
@@ -399,6 +595,39 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
           <p className="text-muted-foreground">{factcode.description}</p>
         </div>
       </div>
+
+      {/* Recent RvWs Banner */}
+      {filteredRecentRvws.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Recente RvW's:</p>
+          {filteredRecentRvws.map((rvw) => (
+            <Card
+              key={rvw.id}
+              className="cursor-pointer hover:bg-accent transition-colors"
+              onClick={() => loadRecentRvw(rvw)}
+            >
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="font-medium">
+                    Gebruik RvW voor: {rvw.location_value}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Laatst gebruikt op:{" "}
+                    {new Date(rvw.created_at).toLocaleString("nl-NL", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -431,18 +660,25 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
 
               {!isStopped && (
                 <div className="space-y-2">
-                  <Label>Reden waarom de persoon niet is staande gehouden</Label>
-                  <Select value={notStoppedReason} onValueChange={(v) => setNotStoppedReason(v as any)}>
+                  <Label>
+                    Reden waarom de persoon niet is staande gehouden
+                  </Label>
+                  <Select
+                    value={notStoppedReason}
+                    onValueChange={(v) => setNotStoppedReason(v as any)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="geen_bestuurder">Geen bestuurder</SelectItem>
+                      <SelectItem value="geen_bestuurder">
+                        Geen bestuurder
+                      </SelectItem>
                       <SelectItem value="anders">Anders, namelijk</SelectItem>
                     </SelectContent>
                   </Select>
 
-                  {notStoppedReason === 'anders' && (
+                  {notStoppedReason === "anders" && (
                     <div>
                       <Label htmlFor="anders-text">Toelichting (anders)</Label>
                       <Input
@@ -450,7 +686,11 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
                         value={andersText}
                         onChange={(e) => setAndersText(e.target.value)}
                         placeholder="Vul hier de reden in"
-                        className={andersText.trim() === '' ? 'bg-yellow-200 dark:bg-yellow-900/50' : '' + ' duration-300'}
+                        className={
+                          andersText.trim() === ""
+                            ? "bg-yellow-200 dark:bg-yellow-900/50"
+                            : "" + " duration-300"
+                        }
                       />
                     </div>
                   )}
@@ -472,7 +712,9 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
               {renderGeneratedTextWithHighlights()}
               <br />
               {reasonPrefix && (
-                <div className="whitespace-pre-wrap mb-3 font-medium">{reasonPrefix}</div>
+                <div className="whitespace-pre-wrap mb-3 font-medium">
+                  {reasonPrefix}
+                </div>
               )}
             </div>
             {hasUnfilledFields && (
@@ -522,10 +764,14 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
         <Card>
           <CardHeader>
             <CardTitle>Opmerking staande houding</CardTitle>
-            <CardDescription>De door u gekozen tekst over het staande houden</CardDescription>
+            <CardDescription>
+              De door u gekozen tekst over het staande houden
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">{reasonPrefix}</pre>
+            <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">
+              {reasonPrefix}
+            </pre>
           </CardContent>
         </Card>
       )}
@@ -534,15 +780,16 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
       {preview && (
         <div
           style={{
-            position: 'fixed',
+            position: "fixed",
             left: preview.x + 12,
             top: preview.y + 12,
             zIndex: 9999,
-            maxWidth: 320
+            maxWidth: 320,
           }}
           onMouseEnter={() => {
             // keep preview open while hovering the card
-            if (previewTimeout.current) window.clearTimeout(previewTimeout.current);
+            if (previewTimeout.current)
+              window.clearTimeout(previewTimeout.current);
           }}
           onMouseLeave={hidePreview}
         >
@@ -553,14 +800,22 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
                   <img
                     src={preview.image_url}
                     alt={preview.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
                     className="block"
                   />
                 </div>
               ) : (
-                <div className="w-48 h-48 flex items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">Geen afbeelding</div>
+                <div className="w-48 h-48 flex items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">
+                  Geen afbeelding
+                </div>
               )}
-              <div className="mt-2 text-center text-sm font-medium">{preview.name}</div>
+              <div className="mt-2 text-center text-sm font-medium">
+                {preview.name}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -577,7 +832,11 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
             aria-label="Kopieer RVW"
             className="shadow-lg"
           >
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>
