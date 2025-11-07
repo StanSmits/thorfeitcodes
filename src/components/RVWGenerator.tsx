@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Copy, Check, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Copy, Check, HelpCircle, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface RVWGeneratorProps {
@@ -25,6 +25,8 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
   const [signsMap, setSignsMap] = useState<Record<string, any>>({});
   // Hover preview state (positioned near cursor)
   const [preview, setPreview] = useState<null | { name: string; image_url?: string; x: number; y: number }>(null);
+  // Recent RvWs for the current location
+  const [recentRvws, setRecentRvws] = useState<any[]>([]);
 
   useEffect(() => {
     // Increment access count
@@ -118,6 +120,48 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
     // We only want to re-run when the field options object identity changes
   }, [factcode.field_options]);
 
+  // Fetch recent RvWs when component loads or location value changes
+  useEffect(() => {
+    const locationField = factcode.location_field;
+    if (!locationField) {
+      setRecentRvws([]);
+      return;
+    }
+
+    const fetchRecentRvws = async () => {
+      try {
+        // Fetch all recent RvWs for this factcode, grouped by location
+        const { data, error } = await supabase
+          .from('saved_rvws')
+          .select('*')
+          .eq('factcode', factcode.factcode)
+          .order('created_at', { ascending: false })
+          .limit(50); // Get more to find unique locations
+
+        if (error) {
+          console.error('Failed to fetch recent RvWs', error);
+          return;
+        }
+
+        // Group by location and keep only the 3 most recent unique locations
+        const locationMap = new Map();
+        (data || []).forEach((rvw: any) => {
+          if (!locationMap.has(rvw.location_value)) {
+            locationMap.set(rvw.location_value, rvw);
+          }
+        });
+
+        // Get first 3 unique locations
+        const uniqueLocations = Array.from(locationMap.values()).slice(0, 3);
+        setRecentRvws(uniqueLocations);
+      } catch (err) {
+        console.error('Error fetching recent RvWs', err);
+      }
+    };
+
+    fetchRecentRvws();
+  }, [factcode.factcode, factcode.location_field]);
+
   const fieldOptions = factcode.field_options || {};
   const fieldTooltips = factcode.field_tooltips || {};
 
@@ -173,7 +217,7 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
     setFormValues(prev => ({ ...prev, [fieldName]: value }));
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     // Copy the clean version without highlighting
     const cleanText = fullGeneratedText.replace(/\{[^}]+\}/g, (match) => match);
     navigator.clipboard.writeText(cleanText);
@@ -183,6 +227,63 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
       description: "De tekst is naar het klembord gekopieerd.",
     });
     setTimeout(() => setCopied(false), 2000);
+
+    // Save the RvW if location field is configured
+    const locationField = factcode.location_field;
+    if (locationField) {
+      const locationValue = formValues[locationField];
+      if (locationValue && locationValue.trim() !== '') {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          await supabase.from('saved_rvws').insert({
+            user_id: user?.id || null,
+            factcode: factcode.factcode,
+            location_value: locationValue.trim(),
+            form_values: formValues,
+            generated_text: cleanText,
+          });
+        } catch (err) {
+          console.error('Failed to save RvW', err);
+        }
+      }
+    }
+  };
+
+  const loadRecentRvw = async (rvw: any) => {
+    if (rvw.form_values) {
+      setFormValues(rvw.form_values);
+      
+      // Update the timestamp by re-saving with current time
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase
+          .from('saved_rvws')
+          .update({ created_at: new Date().toISOString() })
+          .eq('id', rvw.id);
+        
+        // Refresh the list
+        const locationField = factcode.location_field;
+        if (locationField) {
+          const locationValue = rvw.location_value;
+          const { data } = await supabase
+            .from('saved_rvws')
+            .select('*')
+            .eq('factcode', factcode.factcode)
+            .eq('location_value', locationValue)
+            .order('created_at', { ascending: false })
+            .limit(3);
+          setRecentRvws(data || []);
+        }
+      } catch (err) {
+        console.error('Failed to update timestamp', err);
+      }
+      
+      toast({
+        title: "RvW geladen",
+        description: "De opgeslagen RvW is geladen.",
+      });
+    }
   };
 
   const showPreview = (label: string, e: React.MouseEvent) => {
@@ -399,6 +500,36 @@ export function RVWGenerator({ factcode, onBack }: RVWGeneratorProps) {
           <p className="text-muted-foreground">{factcode.description}</p>
         </div>
       </div>
+
+      {/* Recent RvWs Banner */}
+      {recentRvws.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Recente RvW's:</p>
+          {recentRvws.map((rvw) => (
+            <Card
+              key={rvw.id}
+              className="cursor-pointer hover:bg-accent transition-colors"
+              onClick={() => loadRecentRvw(rvw)}
+            >
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="font-medium">Gebruik RvW voor: {rvw.location_value}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Laatst gebruikt op: {new Date(rvw.created_at).toLocaleString('nl-NL', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
