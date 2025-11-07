@@ -17,36 +17,39 @@ export type Database = {
       factcode_suggestions: {
         Row: {
           created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           field_options: Json | null
           id: number
           status: string | null
           suggested_code: string
           template: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           field_options?: Json | null
           id?: number
           status?: string | null
           suggested_code?: string
           template?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           field_options?: Json | null
           id?: number
           status?: string | null
           suggested_code?: string
           template?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
         }
         Relationships: []
       }
@@ -54,36 +57,48 @@ export type Database = {
         Row: {
           access_count: number
           created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           factcode: string
           field_options: Json | null
           field_tooltips: Json | null
           id: string
           image_url: string | null
+          location_field: string | null
           template: string
           tooltip_text: string | null
         }
         Insert: {
           access_count?: number
           created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           factcode?: string
           field_options?: Json | null
           field_tooltips?: Json | null
           id?: string
           image_url?: string | null
+          location_field?: string | null
           template?: string
           tooltip_text?: string | null
         }
         Update: {
           access_count?: number
           created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           factcode?: string
           field_options?: Json | null
           field_tooltips?: Json | null
           id?: string
           image_url?: string | null
+          location_field?: string | null
           template?: string
           tooltip_text?: string | null
         }
@@ -92,6 +107,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          deleted_at: string | null
           email: string
           full_name: string | null
           id: string
@@ -106,6 +122,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           email: string
           full_name?: string | null
           id: string
@@ -120,6 +137,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           email?: string
           full_name?: string | null
           id?: string
@@ -132,12 +150,23 @@ export type Database = {
           subscription_status?: Database["public"]["Enums"]["subscription_status_enum"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "admin_users_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       road_signs: {
         Row: {
           category: string
           created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           id: string
           image_url: string | null
@@ -148,6 +177,9 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
@@ -158,6 +190,9 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
@@ -167,60 +202,125 @@ export type Database = {
         }
         Relationships: []
       }
-      
-      users: {
+      saved_rvws: {
         Row: {
-          active: boolean | null
-          created_at: string | null
-          email: string
-          full_name: string
+          created_at: string
+          factcode: string
+          form_values: Json
+          generated_text: string
           id: string
-          last_login: string | null
-          organization: string | null
-          role: string
+          location_value: string
+          user_id: string | null
         }
         Insert: {
-          active?: boolean | null
-          created_at?: string | null
-          email: string
-          full_name: string
-          id: string
-          last_login?: string | null
-          organization?: string | null
-          role?: string
+          created_at?: string
+          factcode: string
+          form_values?: Json
+          generated_text: string
+          id?: string
+          location_value: string
+          user_id?: string | null
         }
         Update: {
-          active?: boolean | null
-          created_at?: string | null
-          email?: string
-          full_name?: string
+          created_at?: string
+          factcode?: string
+          form_values?: Json
+          generated_text?: string
           id?: string
-          last_login?: string | null
-          organization?: string | null
-          role?: string
+          location_value?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          name: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      admin_users_view: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          roles: string[] | null
+          updated_at: string | null
         }
         Relationships: []
       }
     }
-    Views: {
-      [_ in never]: never
-    }
     Functions: {
       create_missing_profiles: { Args: never; Returns: undefined }
+      get_admin_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      get_effective_role_for_current_user: { Args: never; Returns: string }
       get_user_roles: {
         Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["user_role"][]
+        Returns: Database["public"]["Enums"]["app_role"][]
       }
+      hard_delete_user: { Args: { target_user: string }; Returns: undefined }
       has_role: {
         Args: {
-          _role: Database["public"]["Enums"]["user_role"]
+          _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
       }
       increment_access_count: { Args: { item_id: string }; Returns: undefined }
+      is_admin: { Args: never; Returns: boolean }
+      is_moderator_or_above: { Args: never; Returns: boolean }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       subscription_plan_enum: "pro"
       subscription_status_enum: "active" | "inactive" | "cancelled"
       user_role: "user" | "subscriber" | "moderator" | "administrator"
@@ -351,6 +451,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       subscription_plan_enum: ["pro"],
       subscription_status_enum: ["active", "inactive", "cancelled"],
       user_role: ["user", "subscriber", "moderator", "administrator"],

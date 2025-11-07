@@ -1,3 +1,5 @@
+import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +30,39 @@ import { toast } from "@/hooks/use-toast";
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFactcode, setSelectedFactcode] = useState<any>(null);
+  const [initialFormValues, setInitialFormValues] = useState<Record<string,string> | undefined>(undefined);
+  const location = useLocation();
+
+  // If navigated here with a prefill (from SavedRvws), load that factcode and form values
+  useEffect(() => {
+    const prefill = (location.state as any)?.prefill;
+    if (!prefill || !prefill.factcode) return;
+
+    const loadPrefill = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('feitcodes')
+          .select('*')
+          .eq('factcode', prefill.factcode)
+          .limit(1)
+          .single();
+
+        if (error) {
+          console.error('Failed to fetch prefill factcode', error);
+          return;
+        }
+
+        setSelectedFactcode(data);
+        if (prefill.form_values) {
+          setInitialFormValues(prefill.form_values);
+        }
+      } catch (err) {
+        console.error('Error loading prefill', err);
+      }
+    };
+
+    loadPrefill();
+  }, [location?.state]);
   const [suggestDialogOpen, setSuggestDialogOpen] = useState(false);
   const [suggestedCode, setSuggestedCode] = useState("");
   const [suggestedDescription, setSuggestedDescription] = useState("");
@@ -216,7 +251,8 @@ export default function Search() {
       ) : (
         <RVWGenerator
           factcode={selectedFactcode}
-          onBack={() => setSelectedFactcode(null)}
+          onBack={() => { setSelectedFactcode(null); setInitialFormValues(undefined); }}
+          initialFormValues={initialFormValues}
         />
       )}
     </div>
