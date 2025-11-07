@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { Layout } from "./components/Layout";
 import Search from "./pages/Search";
 import Kennisbank from "./pages/Kennisbank";
+import SavedRvws from "./pages/SavedRvws";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -49,6 +50,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Kennisbank />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/opgeslagen"
+              element={
+                <ProtectedRoute>
+                  <SavedRvws />
                 </ProtectedRoute>
               }
             />

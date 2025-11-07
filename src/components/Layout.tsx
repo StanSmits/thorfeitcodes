@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Shield, Search, Book, Settings, Menu, LogOut } from 'lucide-react';
+import { Shield, Search, Book, FileText, Settings, Menu, LogOut } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -16,6 +16,7 @@ export function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: 'Zoeken', href: '/', icon: Search },
+    { name: 'Opgeslagen', href: '/opgeslagen', icon: FileText },
     { name: 'Kennisbank', href: '/kennisbank', icon: Book },
   ];
 
