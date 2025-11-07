@@ -24,14 +24,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  FileText,
-  Calendar as CalendarIcon,
-  Copy,
-  Check,
-  X,
-  ChevronRight,
-} from "lucide-react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
