@@ -185,10 +185,15 @@ export default function Search() {
             ) : (
               feitcodes.map((code) => (
                 <Card
-                  key={code.id}
-                  className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300"
-                  onClick={() => setSelectedFactcode(code)}
-                >
+                    key={code.id}
+                    className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300"
+                    onClick={() => {
+                      setSelectedFactcode(code);
+                      if (typeof window !== 'undefined') {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }}
+                  >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">{code.factcode}</CardTitle>
