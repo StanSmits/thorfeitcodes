@@ -38,13 +38,14 @@ export default function Search() {
     queryFn: async () => {
       let query = supabase
         .from("feitcodes")
-        .select("*")
-        .order("access_count", { ascending: false });
+        .select("*");
 
       if (searchTerm) {
-        query = query.or(
-          `factcode.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
-        );
+        query = query
+          .ilike("factcode", `%${searchTerm}%`)
+          .order("factcode", { ascending: true });
+      } else {
+        query = query.order("access_count", { ascending: false });
       }
 
       const { data, error } = await query.limit(9);
@@ -182,32 +183,28 @@ export default function Search() {
                 </Dialog>
               </div>
             ) : (
-              feitcodes
-                ?.sort((a, b) => b.access_count - a.access_count)
-                .map((code) => (
-                  <Card
-                    key={code.id}
-                    className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300"
-                    onClick={() => setSelectedFactcode(code)}
-                  >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-lg">
-                          {code.factcode}
-                        </CardTitle>
-                      </div>
-                      <CardDescription className="line-clamp-2">
-                        {code.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <FileText className="h-4 w-4" />
-                        <span>Klik om RVW te genereren</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+              feitcodes.map((code) => (
+                <Card
+                  key={code.id}
+                  className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300"
+                  onClick={() => setSelectedFactcode(code)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg">{code.factcode}</CardTitle>
+                    </div>
+                    <CardDescription className="line-clamp-2">
+                      {code.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <FileText className="h-4 w-4" />
+                      <span>Klik om RVW te genereren</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </div>
         </>
