@@ -43,7 +43,6 @@ export default function SavedRvws() {
   const [locationFilter, setLocationFilter] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { data: savedRvws, isLoading } = useQuery({
