@@ -309,9 +309,6 @@ export function RVWGenerator({
 
       // Update the timestamp by re-saving with current time
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
         await supabase
           .from("saved_rvws")
           .update({ created_at: new Date().toISOString() })
