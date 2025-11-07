@@ -586,44 +586,47 @@ export function RVWGenerator({
       </div>
 
       {/* Recent RvWs Banner */}
-      {recentRvws.filter((rvw) => {
-        // Exclude if saved form_values deep-equals current prefill
-        if (deepEqual(rvw.form_values, currentPrefill)) return false;
-        // Also exclude if generated_text matches the current full generated text
-        if (rvw.generated_text && rvw.generated_text === fullGeneratedText)
-          return false;
-        return true;
-      }).length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Recente RvW's:</p>
-          {recentRvws.map((rvw) => (
-            <Card
-              key={rvw.id}
-              className="cursor-pointer hover:bg-accent transition-colors"
-              onClick={() => loadRecentRvw(rvw)}
-            >
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="font-medium">
-                    Gebruik RvW voor: {rvw.location_value}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Laatst gebruikt op:{" "}
-                    {new Date(rvw.created_at).toLocaleString("nl-NL", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      {(() => {
+        const filteredRecentRvws = recentRvws.filter((rvw) => {
+          // Exclude if saved form_values deep-equals current prefill
+          if (deepEqual(rvw.form_values, currentPrefill)) return false;
+          // Also exclude if generated_text matches the current full generated text
+          if (rvw.generated_text && rvw.generated_text === fullGeneratedText)
+            return false;
+          return true;
+        });
+        return filteredRecentRvws.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Recente RvW's:</p>
+            {filteredRecentRvws.map((rvw) => (
+              <Card
+                key={rvw.id}
+                className="cursor-pointer hover:bg-accent transition-colors"
+                onClick={() => loadRecentRvw(rvw)}
+              >
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      Gebruik RvW voor: {rvw.location_value}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Laatst gebruikt op:{" "}
+                      {new Date(rvw.created_at).toLocaleString("nl-NL", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
