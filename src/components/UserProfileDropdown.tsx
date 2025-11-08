@@ -17,10 +17,6 @@ export function UserProfileDropdown() {
   const { user, roles, signOut } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    console.log("UserProfileDropdown mounted, user:", roles, user);
-  }, [roles, user]);
-
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
