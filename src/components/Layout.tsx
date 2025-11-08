@@ -1,18 +1,18 @@
 import { ReactNode } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Shield, Search, Book, FileText, Settings, Menu, LogOut } from 'lucide-react';
+import { Shield, Search, Book, FileText, Settings, Menu } from 'lucide-react';
+import { UserProfileDropdown } from '@/components/UserProfileDropdown';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { user, isAdmin, isModerator, signOut } = useAuth();
+  const { user, isModerator } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const navigation = [
     { name: 'Zoeken', href: '/', icon: Search },
@@ -23,11 +23,6 @@ export function Layout({ children }: LayoutProps) {
   if (isModerator) {
     navigation.push({ name: 'Beheer', href: '/admin', icon: Settings });
   }
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-  };
 
   if (!user) {
     return <>{children}</>;
@@ -98,9 +93,7 @@ export function Layout({ children }: LayoutProps) {
             })}
           </nav>
 
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <UserProfileDropdown />
         </div>
       </header>
 
