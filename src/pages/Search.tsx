@@ -167,7 +167,7 @@ export default function Search() {
                       Suggereer een feitcode
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-h-[80vh] overflow-auto">
                     <DialogHeader>
                       <DialogTitle>Feitcode suggereren</DialogTitle>
                       <DialogDescription>

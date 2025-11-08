@@ -37,7 +37,7 @@ export function RVWGenerator({
   const [copied, setCopied] = useState(false);
   const [isStopped, setIsStopped] = useState<boolean>(false);
   const [notStoppedReason, setNotStoppedReason] = useState<
-    "geen_bestuurder" | "anders"
+    "geen_bestuurder" | "stopteken" | "anders"
   >("geen_bestuurder");
   const [andersText, setAndersText] = useState<string>("");
   const previewTimeout = useRef<number | null>(null);
@@ -241,6 +241,10 @@ export function RVWGenerator({
     // not stopped
     if (notStoppedReason === "geen_bestuurder") {
       return "Ik kon de betrokkene niet staande houden omdat er gedurende de gehele casus geen activiteiten in of om het voertuig heb waargenomen.  Daarnaast kwam er gedurende de gehele casus geen betrokkene bij mij zich melden alszijnde bestuurder";
+    }
+
+    if (notStoppedReason === "stopteken") {
+      return "Ik kon de betrokkene niet staande houden omdat er geen tijdig stopteken gegeven kon worden aan de bestuurder.";
     }
 
     // anders
@@ -674,6 +678,7 @@ export function RVWGenerator({
                       <SelectItem value="geen_bestuurder">
                         Geen bestuurder
                       </SelectItem>
+                      <SelectItem value="stopteken">Geen stopteken kunnen geven</SelectItem>
                       <SelectItem value="anders">Anders, namelijk</SelectItem>
                     </SelectContent>
                   </Select>
