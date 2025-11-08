@@ -66,17 +66,16 @@ export function UserProfileDropdown() {
                 {getUserName()}
               </p>
               {(() => {
-                const key = getUserRole();
-                const label = getUserRole();
+                const role = getUserRole();
                 const classes =
-                  key === "Beheerder"
+                  role === "Beheerder"
                     ? "bg-red-600 text-white"
-                    : key === "Moderator"
+                    : role === "Moderator"
                     ? "bg-green-600 text-white"
                     : "bg-gray-200 text-black";
                 return (
                   <div className={`p-2 text-sm ${classes} rounded-md w-fit`}>
-                    {label}
+                    {role}
                   </div>
                 );
               })()}
