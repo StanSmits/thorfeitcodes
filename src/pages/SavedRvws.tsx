@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,8 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useNavigate } from 'react-router-dom';
-import { CalendarIcon, X, FileText, ChevronRight } from "lucide-react";
+import { CalendarIcon, X, FileText, ChevronRight, Trash } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 export default function SavedRvws() {
   const [factcodeFilter, setFactcodeFilter] = useState<string>("all");
@@ -36,6 +37,22 @@ export default function SavedRvws() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: any) => {
+      const { error } = await supabase.from("saved_rvws").delete().eq("id", id as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Verwijderd", description: "De opgeslagen RvW is verwijderd." });
+      queryClient.invalidateQueries({ queryKey: ["saved-rvws"] });
+    },
+    onError: (err) => {
+      console.error("Failed to delete saved RvW", err);
+      toast({ title: "Fout", description: "Kon opgeslagen RvW niet verwijderen.", variant: "destructive" });
+    },
+  });
 
   const { data: savedRvws, isLoading } = useQuery({
     queryKey: ["saved-rvws"],
@@ -269,7 +286,23 @@ export default function SavedRvws() {
                       })}
                     </CardDescription>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Confirm before deletion
+                        if (confirm('Weet je zeker dat je deze opgeslagen RvW wilt verwijderen?')) {
+                          deleteMutation.mutate(rvw.id);
+                        }
+                      }}
+                      aria-label="Verwijder opgeslagen RvW"
+                    >
+                      <Trash className="h-4 w-4 text-destructive" />
+                    </Button>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
