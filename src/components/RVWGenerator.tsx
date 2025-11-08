@@ -603,7 +603,7 @@ export function RVWGenerator({
           {filteredRecentRvws.map((rvw) => (
             <Card
               key={rvw.id}
-              className="cursor-pointer hover:bg-accent transition-colors"
+              className="cursor-pointer bg-muted/25 hover:bg-muted/70 transition-colors"
               onClick={() => loadRecentRvw(rvw)}
             >
               <CardContent className="p-4 flex items-center justify-between">

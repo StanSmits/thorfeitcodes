@@ -256,7 +256,7 @@ export default function SavedRvws() {
               className="overflow-hidden"
               onClick={() => loadRecentRvw(rvw)}
             >
-              <CardContent className="bg-muted/50 p-4 cursor-pointer hover:bg-muted/70 transition-colors">
+              <CardContent className="bg-muted/25 p-4 cursor-pointer hover:bg-muted/70 transition-colors">
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg font-mono">
