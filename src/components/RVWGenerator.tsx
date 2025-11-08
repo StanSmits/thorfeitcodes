@@ -293,13 +293,46 @@ export function RVWGenerator({
             data: { user },
           } = await supabase.auth.getUser();
 
-          await supabase.from("saved_rvws").insert({
-            user_id: user?.id || null,
-            factcode: factcode.factcode,
-            location_value: locationValue.trim(),
-            form_values: formValues,
-            generated_text: cleanText,
-          });
+          const userId = user?.id || null;
+
+          // Check if this exact generated RvW already exists for this user and factcode.
+          // If so, update its timestamp and form_values instead of inserting a new row.
+          const { data: existing, error: existingError } = await supabase
+            .from("saved_rvws")
+            .select("id")
+            .match({
+              user_id: userId,
+              factcode: factcode.factcode,
+              generated_text: cleanText,
+            })
+            .maybeSingle();
+
+          if (existingError) {
+            console.error("Failed to query existing saved RvW", existingError);
+          }
+
+          if (existing && existing.id) {
+            try {
+              await supabase
+                .from("saved_rvws")
+                .update({
+                  created_at: new Date().toISOString(),
+                  form_values: formValues,
+                  location_value: locationValue.trim(),
+                })
+                .eq("id", existing.id);
+            } catch (err) {
+              console.error("Failed to update existing saved RvW", err);
+            }
+          } else {
+            await supabase.from("saved_rvws").insert({
+              user_id: userId,
+              factcode: factcode.factcode,
+              location_value: locationValue.trim(),
+              form_values: formValues,
+              generated_text: cleanText,
+            });
+          }
         } catch (err) {
           console.error("Failed to save RvW", err);
         }
