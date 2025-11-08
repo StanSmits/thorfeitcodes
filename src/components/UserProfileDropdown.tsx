@@ -25,7 +25,7 @@ export function UserProfileDropdown() {
     const fullName = user?.user_metadata?.full_name || user?.email || '';
     if (!fullName) return 'U';
     
-    const names = fullName.split(' ');
+    const names = fullName.split(' ').filter(n => n.length > 0);
     if (names.length >= 2) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
     }
