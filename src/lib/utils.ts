@@ -26,3 +26,16 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     return false;
   }
 }
+
+export function computePasswordStrength(pw: string) {
+  if (!pw) return 0;
+  const checks = [
+    pw.length >= 8,
+    /[A-Z]/.test(pw),
+    /[a-z]/.test(pw),
+    /[0-9]/.test(pw),
+    /[^A-Za-z0-9]/.test(pw),
+  ];
+  const score = checks.filter(Boolean).length;
+  return (score / 5) * 100;
+}

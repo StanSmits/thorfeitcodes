@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -15,13 +15,61 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { User, Lock, Bell } from 'lucide-react';
+import { TwoFactorSetup } from '@/components/TwoFactorSetup';
+import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
+import { computePasswordStrength } from '@/lib/utils';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  
+
+  useEffect(() => {
+    if (user) {
+      setFullName(user.user_metadata?.full_name || '');
+    }
+  }, [user]);
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const nameChanged = fullName !== user?.user_metadata?.full_name;
+
+      if (!nameChanged) {
+        toast({ title: 'Geen wijzigingen', description: 'Er zijn geen wijzigingen om op te slaan.' });
+        setLoading(false);
+        return;
+      }
+
+      if (!user?.id) throw new Error('Geen ingelogde gebruiker gevonden');
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      toast({ title: 'Profiel bijgewerkt', description: 'Uw profiel is succesvol bijgewerkt.' });
+      setIsEditingProfile(false);
+      // refresh client-side user/profile
+      await refreshUser().catch(() => {});
+    } catch (error: any) {
+      toast({
+        title: 'Fout bij bijwerken profiel',
+        description: error.message || 'Er is een fout opgetreden.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +120,8 @@ export default function Settings() {
     }
   };
 
+  // use shared computePasswordStrength from utils
+
   return (
     <div className="container max-w-4xl py-8">
       <div className="mb-8">
@@ -105,38 +155,49 @@ export default function Settings() {
                 Uw persoonlijke gegevens en accountinformatie
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Volledige naam</Label>
-                <Input
-                  value={user?.user_metadata?.full_name || ''}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Naam kan momenteel niet worden gewijzigd
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>E-mailadres</Label>
-                <Input
-                  value={user?.email || ''}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">
-                  E-mailadres kan momenteel niet worden gewijzigd
-                </p>
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Label>Account ID</Label>
-                <Input
-                  value={user?.id || ''}
-                  disabled
-                  className="bg-muted font-mono text-xs"
-                />
-              </div>
+            <CardContent>
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="full-name">Volledige naam</Label>
+                  <Input
+                    id="full-name"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      setIsEditingProfile(true);
+                    }}
+                    placeholder="Jan Jansen"
+                  />
+                </div>
+                {/* Email changes disabled in this UI — only name can be changed */}
+                {isEditingProfile && (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setFullName(user?.user_metadata?.full_name || '');
+                        setIsEditingProfile(false);
+                      }}
+                      disabled={loading}
+                    >
+                      Annuleren
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? 'Opslaan...' : 'Wijzigingen opslaan'}
+                    </Button>
+                  </div>
+                )}
+                <Separator />
+                <div className="space-y-2">
+                  <Label>Account ID</Label>
+                  <Input
+                    value={user?.id || ''}
+                    disabled
+                    className="bg-muted font-mono text-xs"
+                  />
+                </div>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -152,20 +213,6 @@ export default function Settings() {
             <CardContent>
               <form onSubmit={handlePasswordChange} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="current-password">Huidig wachtwoord</Label>
-                  <Input
-                    id="current-password"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Niet vereist voor wachtwoordwijziging
-                  </p>
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="new-password">Nieuw wachtwoord</Label>
                   <Input
                     id="new-password"
@@ -175,6 +222,12 @@ export default function Settings() {
                     required
                     minLength={6}
                   />
+                  <PasswordStrengthIndicator password={newPassword} />
+                  {newPassword && (
+                    <p className={`text-xs mt-1 ${computePasswordStrength(newPassword) < 60 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      {computePasswordStrength(newPassword) < 60 ? 'Wachtwoord te zwak (minimaal 3 van 5 checks vereist).' : 'Wachtwoordsterkte voldoende.'}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Bevestig nieuw wachtwoord</Label>
@@ -187,14 +240,16 @@ export default function Settings() {
                     minLength={6}
                   />
                 </div>
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading || computePasswordStrength(newPassword) < 60}>
                   {loading ? 'Bezig met wijzigen...' : 'Wachtwoord wijzigen'}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
-          <Card>
+          <TwoFactorSetup />
+
+          {/* <Card>
             <CardHeader>
               <CardTitle>Account beveiliging</CardTitle>
               <CardDescription>
@@ -202,18 +257,6 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Twee-factor authenticatie</p>
-                  <p className="text-sm text-muted-foreground">
-                    Extra beveiliging voor uw account
-                  </p>
-                </div>
-                <Button variant="outline" disabled>
-                  Binnenkort
-                </Button>
-              </div>
-              <Separator />
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Actieve sessies</p>
@@ -226,7 +269,7 @@ export default function Settings() {
                 </Button>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
@@ -265,6 +308,8 @@ export default function Settings() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Email change flow removed — only name editing is supported */}
     </div>
   );
 }
