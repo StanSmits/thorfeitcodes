@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Shield } from "lucide-react";
+import { TwoFactorDialog } from "@/components/TwoFactorDialog";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -22,6 +23,10 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [showTwoFactor, setShowTwoFactor] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState("");
+  const [mfaChallengeId, setMfaChallengeId] = useState("");
+  const [mfaUserId, setMfaUserId] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -36,12 +41,33 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      // Check if MFA is enabled
+      const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factorsData?.totp?.find(factor => factor.status === 'verified');
+
+      if (totpFactor && data.user) {
+        // MFA is enabled, need to verify
+        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+          factorId: totpFactor.id,
+        });
+
+        if (challengeError) throw challengeError;
+
+        // store both the factor id and the challenge id
+        setMfaFactorId(totpFactor.id);
+        setMfaChallengeId((challengeData as any)?.id ?? "");
+        setMfaUserId(data.user.id ?? "");
+        setShowTwoFactor(true);
+        setLoading(false);
+        return;
+      }
 
       toast({
         title: "Ingelogd",
@@ -54,9 +80,66 @@ export default function Auth() {
         description: error.message || "Er is een fout opgetreden.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
+  };
+
+  const handleTwoFactorVerify = async (code: string, type: 'app' | 'email' | 'backup' = 'app') => {
+    try {
+      if (type === 'backup') {
+        // Verify backup code on the server (we added verify_backup_code SQL function)
+        try {
+          const { data: verifyData, error: verifyError } = await (supabase as any).rpc('verify_backup_code', { p_user: mfaUserId, p_code: code });
+          if (verifyError) throw verifyError;
+
+          const ok = verifyData === true || verifyData === 't' || verifyData === 1;
+          if (!ok) {
+            throw new Error('Backup code ongeldig');
+          }
+
+          // Backup code accepted. Send a magic link to the user's email to complete sign-in.
+          const { error: mailError } = await supabase.auth.signInWithOtp({ email });
+          if (mailError) throw mailError;
+
+          toast({ title: 'Backup code geaccepteerd', description: 'Een aanmeldlink is naar uw e-mail gestuurd. Gebruik de link om in te loggen.' });
+          setShowTwoFactor(false);
+          await supabase.auth.signOut();
+          return true;
+        } catch (err: any) {
+          toast({ title: 'Verificatie mislukt', description: err.message || 'De ingevoerde backup code is onjuist.', variant: 'destructive' });
+          return false;
+        }
+      }
+
+      const { error } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: mfaChallengeId,
+        code,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Ingelogd",
+        description: "U bent succesvol ingelogd.",
+      });
+      
+      setShowTwoFactor(false);
+      navigate("/");
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Verificatie mislukt",
+        description: error.message || "De ingevoerde code is onjuist. Probeer het opnieuw.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const handleTwoFactorCancel = () => {
+    setShowTwoFactor(false);
+    supabase.auth.signOut();
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -94,6 +177,13 @@ export default function Auth() {
 
   return (
     <>
+      <TwoFactorDialog
+        open={showTwoFactor}
+        onVerify={handleTwoFactorVerify}
+        onCancel={handleTwoFactorCancel}
+        codeType="app"
+      />
+      
       <div className="bg-primary py-4">
         <div className="container mx-auto text-center">
           <h2 className="text-2xl font-bold text-white">

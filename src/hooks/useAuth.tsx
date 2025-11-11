@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -11,6 +11,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isModerator: boolean;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,38 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<string[]>([]);
 
-  useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setTimeout(() => {
-            fetchUserRoles(session.user.id);
-          }, 0);
-        } else {
-          setRoles([]);
-        }
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchUserRoles(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchUserRoles = async (userId: string) => {
+  const fetchUserRoles = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -73,7 +43,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Error fetching roles:', error);
       setRoles([]);
     }
-  };
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session ?? null);
+
+      if (session?.user) {
+        // Try to read profile to obtain the canonical full_name and merge it into user_metadata
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          if (profileData && (profileData as any).full_name) {
+            const mergedUser = {
+              ...session.user,
+              user_metadata: {
+                ...(session.user.user_metadata ?? {}),
+                full_name: (profileData as any).full_name,
+              },
+            } as User;
+            setUser(mergedUser);
+          } else {
+            setUser(session.user);
+          }
+        } catch (err) {
+          // If profile fetch fails, fall back to session user
+          setUser(session.user);
+        }
+
+        await fetchUserRoles(session.user.id);
+      } else {
+        setUser(null);
+        setRoles([]);
+      }
+    } catch (error) {
+      console.error('Error refreshing user/session:', error);
+    }
+  }, [fetchUserRoles]);
+
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        // Re-run our refresh logic on auth changes so profile and roles are in sync
+        refreshUser();
+      }
+    );
+
+    // Check for existing session and refresh user/profile
+    refreshUser().finally(() => setLoading(false));
+
+    return () => subscription.unsubscribe();
+  }, [refreshUser]);
 
   const signOut = async () => {
     try {
@@ -94,11 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+
   const isAdmin = roles.includes('admin');
   const isModerator = roles.includes('moderator') || isAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, roles, isAdmin, isModerator, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, roles, isAdmin, isModerator, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
