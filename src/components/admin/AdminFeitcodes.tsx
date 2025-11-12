@@ -725,6 +725,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
                             </TableCell>
                             <TableCell className="py-3" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-1">
+                                {!isExpanded && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -734,7 +735,8 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
                                   <Pencil className="h-4 w-4" />
                                   <span className="sr-only">Bewerken</span>
                                 </Button>
-                                {isAdmin && (
+                                )}
+                                {isAdmin && !isExpanded && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
