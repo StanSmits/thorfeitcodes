@@ -183,17 +183,6 @@ export default function Auth() {
         onCancel={handleTwoFactorCancel}
         codeType="app"
       />
-      
-      <div className="bg-primary py-4">
-        <div className="container mx-auto text-center">
-          <h2 className="text-2xl font-bold text-white">
-            Welkom bij de nieuwe versie van de RvW Applicatie!
-          </h2>
-          <p className="mt-2 text-white">
-            We hebben hard gewerkt aan verbeteringen en nieuwe functies!
-          </p>
-        </div>
-      </div>
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-3 text-center">
