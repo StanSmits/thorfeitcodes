@@ -627,6 +627,19 @@ export function RVWGenerator({
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
+
+        {/* Optional road sign image set on the feitcode (from Admin) */}
+        {factcode.image_url ? (
+          <div className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-muted">
+            <img
+              src={factcode.image_url}
+              alt={factcode.tooltip_text || factcode.factcode}
+              title={factcode.tooltip_text || ''}
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </div>
+        ) : null}
+
         <div>
           <h2 className="text-2xl font-bold">{factcode.factcode}</h2>
           <p className="text-muted-foreground">{factcode.description}</p>

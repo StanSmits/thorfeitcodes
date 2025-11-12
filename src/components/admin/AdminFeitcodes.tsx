@@ -43,6 +43,8 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     description: '',
     template: '',
     location_field: '',
+    image_url: '',
+    tooltip_text: '',
   });
   const [fields, setFields] = useState<FieldConfig[]>([]);
 
@@ -54,6 +56,8 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
         description: prefillData.description || '',
         template: prefillData.template || '',
         location_field: prefillData.location_field || '',
+        image_url: prefillData.image_url || '',
+        tooltip_text: prefillData.tooltip_text || '',
       });
       
       // Convert field_options to FieldConfig array if provided
@@ -135,6 +139,19 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
         .from('feitcodes')
         .select('*')
         .order('factcode');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // fetch available road signs so admin can pick one to associate with the feitcode
+  const { data: roadSigns = [] } = useQuery({
+    queryKey: ['road-signs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('road_signs')
+        .select('sign_code, sign_name, image_url')
+        .order('sign_code');
       if (error) throw error;
       return data;
     },
@@ -321,6 +338,8 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
       description: '',
       location_field: '',
       template: '',
+      image_url: '',
+      tooltip_text: '',
     });
     setFields([]);
   };
@@ -332,6 +351,8 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
       description: code.description || '',
       template: code.template || '',
       location_field: code.location_field || '',
+      image_url: code.image_url || '',
+      tooltip_text: code.tooltip_text || '',
     });
     
     // Convert field_options and field_tooltips back to FieldConfig array
@@ -497,6 +518,58 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
                 </p>
               </div>
 
+              {/* Road sign selector - pick a sign from road_signs to show in header */}
+              <div className="space-y-2">
+                <Label htmlFor="road_sign">Toon verkeersbord (optioneel)</Label>
+                <Select
+                  value={
+                    (formData.image_url && roadSigns.find((r: any) => r.image_url === formData.image_url)?.sign_code) || '__none__'
+                  }
+                  onValueChange={(value) => {
+                    if (value === '__none__') {
+                      setFormData({ ...formData, image_url: '', tooltip_text: '' });
+                    } else {
+                      const rs = roadSigns.find((r: any) => r.sign_code === value);
+                      setFormData({
+                        ...formData,
+                        image_url: rs?.image_url || '',
+                        tooltip_text: rs?.sign_name || '',
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger id="road_sign">
+                    <SelectValue placeholder="Selecteer een verkeersbord" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Geen verkeersbord</SelectItem>
+                    {[...roadSigns]
+                      .sort((a: any, b: any) => a.sign_code.localeCompare(b.sign_code))
+                      .map((rs: any) => (
+                      <SelectItem key={rs.sign_code} value={rs.sign_code} className='group'>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground group-hover:text-white">{rs.sign_code}</span>
+                          <span className="text-sm text-foreground group-hover:text-white">{rs.sign_name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Preview of selected sign */}
+                {formData.image_url && (
+                  <div className="mt-2">
+                    <Label>Preview</Label>
+                    <div className="mt-1 w-24 h-24 rounded overflow-hidden bg-muted flex items-center justify-center">
+                      <img src={formData.image_url} alt={formData.tooltip_text || 'verkeersbord'} className="w-full h-full object-contain" />
+                    </div>
+                    {formData.tooltip_text && (
+                      <p className="text-xs text-muted-foreground mt-1">{formData.tooltip_text}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="border-t pt-4">
                 <FieldOptionsEditor fields={fields} onChange={setFields} />
                 <p className="text-sm text-muted-foreground mt-2">Tip: kies bij dropdown/radio de opties en vul label en waarde in.</p>
@@ -643,15 +716,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
                               )}
                             </TableCell>
                             <TableCell className="font-mono font-medium py-3">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {getCategoryFromCode(code.factcode) === 'bestuurlijk-ba' && 'BA'}
-                                  {getCategoryFromCode(code.factcode) === 'bestuurlijk-bs' && 'BS'}
-                                  {getCategoryFromCode(code.factcode) === 'mulder' && 'R'}
-                                  {getCategoryFromCode(code.factcode) === 'overig' && 'Overig'}
-                                </Badge>
-                                {code.factcode}
-                              </div>
+                              {code.factcode}
                             </TableCell>
                             <TableCell className="py-3" onClick={(e) => e.stopPropagation()}>
                               <div className="max-w-2xl truncate text-sm text-muted-foreground">
