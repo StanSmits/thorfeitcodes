@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -25,11 +26,13 @@ import {
 import { Search as SearchIcon, FileText, Plus } from "lucide-react";
 import { RVWGenerator } from "@/components/RVWGenerator";
 import { toast } from "@/hooks/use-toast";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFactcode, setSelectedFactcode] = useState<any>(null);
   const [initialFormValues, setInitialFormValues] = useState<Record<string,string> | undefined>(undefined);
+  const [viewMode, setViewMode] = useState<"popular" | "newest" | "all">("popular");
   const location = useLocation();
 
   // If navigated here with a prefill (from SavedRvws), load that factcode and form values
@@ -68,7 +71,7 @@ export default function Search() {
   const queryClient = useQueryClient();
 
   const { data: feitcodes, isLoading } = useQuery({
-    queryKey: ["feitcodes", searchTerm],
+    queryKey: ["feitcodes", searchTerm, viewMode],
     queryFn: async () => {
       let query = supabase
         .from("feitcodes")
@@ -79,10 +82,18 @@ export default function Search() {
           .ilike("factcode", `%${searchTerm}%`)
           .order("factcode", { ascending: true });
       } else {
-        query = query.order("access_count", { ascending: false });
+        // Sort based on view mode
+        if (viewMode === "popular") {
+          query = query.order("access_count", { ascending: false });
+        } else if (viewMode === "newest") {
+          query = query.order("created_at", { ascending: false });
+        } else {
+          // "all" - alphabetical
+          query = query.order("factcode", { ascending: true });
+        }
       }
 
-      const { data, error } = await query.limit(9);
+      const { data, error } = await query.limit(viewMode === "all" ? 100 : 9);
       if (error) throw error;
       return data;
     },
@@ -139,22 +150,60 @@ export default function Search() {
           </div>
 
           {searchTerm ? (
-            <p className="mt-2 text-sm text-muted-foreground">
+            <motion.p 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-2 text-sm text-muted-foreground"
+            >
               Zoekresultaten voor "
               <span className="font-medium">{searchTerm}</span>":
-            </p>
+            </motion.p>
           ) : (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Populaire feitcodes:
-            </p>
+            <div className="space-y-3">
+              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full">
+                <TabsList className="grid w-full max-w-md grid-cols-3">
+                  <TabsTrigger value="popular" className="relative">
+                    Populair
+                  </TabsTrigger>
+                  <TabsTrigger value="newest" className="relative">
+                    Nieuwste
+                  </TabsTrigger>
+                  <TabsTrigger value="all" className="relative">
+                    Alles
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={viewMode}
+                  initial={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                  className="text-sm text-muted-foreground"
+                >
+                  {viewMode === "popular" && "Populaire feitcodes:"}
+                  {viewMode === "newest" && "Nieuwste feitcodes:"}
+                  {viewMode === "all" && "Alle feitcodes:"}
+                </motion.p>
+              </AnimatePresence>
+            </div>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {isLoading ? (
-              <p className="col-span-full text-center text-muted-foreground">
-                Laden...
-              </p>
-            ) : feitcodes?.length === 0 ? (
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={viewMode + searchTerm}
+              initial={{ opacity: 0, scale: 0.95, filter: "blur(8px)" }}
+              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, scale: 0.95, filter: "blur(8px)" }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+            >
+              {isLoading ? (
+                <p className="col-span-full text-center text-muted-foreground">
+                  Laden...
+                </p>
+              ) : feitcodes?.length === 0 ? (
               <div className="col-span-full text-center space-y-4">
                 <p className="text-muted-foreground">Geen feitcodes gevonden</p>
                 <Dialog
@@ -216,9 +265,15 @@ export default function Search() {
                   </DialogContent>
                 </Dialog>
               </div>
-            ) : (
-              feitcodes.map((code) => (
-                <Card
+              ) : (
+                feitcodes.map((code, index) => (
+                  <motion.div
+                    key={code.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
+                  >
+                    <Card
                     key={code.id}
                     className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300"
                     onClick={() => {
@@ -241,11 +296,13 @@ export default function Search() {
                       <FileText className="h-4 w-4" />
                       <span>Klik om RVW te genereren</span>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
+                    </CardContent>
+                  </Card>
+                  </motion.div>
+                ))
+              )}
+            </motion.div>
+          </AnimatePresence>
         </>
       ) : (
         <RVWGenerator

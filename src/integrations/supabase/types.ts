@@ -106,6 +106,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          backup_codes: Json | null
           created_at: string
           deleted_at: string | null
           email: string
@@ -121,6 +122,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          backup_codes?: Json | null
           created_at?: string
           deleted_at?: string | null
           email: string
@@ -136,6 +138,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          backup_codes?: Json | null
           created_at?: string
           deleted_at?: string | null
           email?: string
@@ -315,9 +318,38 @@ export type Database = {
         }
         Returns: boolean
       }
+      hook_restrict_signup_amsterdam: { Args: { event: Json }; Returns: Json }
       increment_access_count: { Args: { item_id: string }; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
       is_moderator_or_above: { Args: never; Returns: boolean }
+      list_user_sessions: {
+        Args: { p_user_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          ip: string
+          user_agent: string
+          user_id: string
+        }[]
+      }
+      list_user_sessions_for_current_user: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          ip: string
+          user_agent: string
+          user_id: string
+        }[]
+      }
+      revoke_other_sessions: {
+        Args: { keep_session_id?: string; p_user_id: string }
+        Returns: undefined
+      }
+      verify_backup_code: {
+        Args: { p_code: string; p_user: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
