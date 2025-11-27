@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { FieldOptionsEditor } from './FieldOptionsEditor';
 import { Badge } from '@/components/ui/badge';
+import { SkeletonTable } from '@/components/ui/SkeletonCard';
 
 interface FieldConfig {
   name: string;
@@ -664,7 +665,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-center text-muted-foreground py-8">Laden...</p>
+            <SkeletonTable />
           ) : (
             <>
               <div className="rounded-md border">

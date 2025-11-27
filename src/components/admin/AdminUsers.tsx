@@ -37,6 +37,8 @@ import { Label } from "@/components/ui/label";
 import { Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Shield, ShieldCheck, User } from "lucide-react";
+import { Skeleton } from "../ui/skeleton";
+import { SkeletonTable } from "../ui/SkeletonCard";
 
 export function AdminUsers() {
   const queryClient = useQueryClient();
@@ -304,7 +306,7 @@ export function AdminUsers() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-center text-muted-foreground">Laden...</p>
+            <SkeletonTable />
           ) : (
             <>
               <Table>

@@ -1,7 +1,47 @@
 import { cn } from "@/lib/utils";
 
 function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />;
+  return (
+    <div role="status" aria-busy="true" className={cn('space-y-2.5 animate-pulse max-w-lg', className)} {...props}>
+      <div className="flex items-center w-full">
+        <div className="h-2.5 bg-muted rounded-full w-32" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-24" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-full" />
+      </div>
+
+      <div className="flex items-center w-full max-w-[480px]">
+        <div className="h-2.5 bg-muted rounded-full w-full" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-full" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-24" />
+      </div>
+
+      <div className="flex items-center w-full max-w-[400px]">
+        <div className="h-2.5 bg-muted rounded-full w-full" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-80" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-full" />
+      </div>
+
+      <div className="flex items-center w-full max-w-[480px]">
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-full" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-full" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-24" />
+      </div>
+
+      <div className="flex items-center w-full max-w-[440px]">
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-32" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-24" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-full" />
+      </div>
+
+      <div className="flex items-center w-full max-w-[360px]">
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-full" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-80" />
+        <div className="h-2.5 ms-2 bg-muted rounded-full w-full" />
+      </div>
+
+      <span className="sr-only">Loading...</span>
+    </div>
+  );
 }
 
 export { Skeleton };

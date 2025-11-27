@@ -1,30 +1,36 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Search, SignpostBig } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Search, SignpostBig } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SkeletonCard } from "@/components/ui/SkeletonCard";
 
 export default function Kennisbank() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const { data: roadSigns, isLoading } = useQuery({
-    queryKey: ['road-signs', searchTerm, selectedCategory],
+    queryKey: ["road-signs", searchTerm, selectedCategory],
     queryFn: async () => {
-      let query = supabase
-        .from('road_signs')
-        .select('*')
-        .order('sign_code');
+      let query = supabase.from("road_signs").select("*").order("sign_code");
 
       if (searchTerm) {
-        query = query.or(`sign_code.ilike.%${searchTerm}%,sign_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        query = query.or(
+          `sign_code.ilike.%${searchTerm}%,sign_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+        );
       }
 
-      if (selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory);
+      if (selectedCategory !== "all") {
+        query = query.eq("category", selectedCategory);
       }
 
       const { data, error } = await query;
@@ -34,12 +40,12 @@ export default function Kennisbank() {
   });
 
   const categories = [
-    { value: 'all', label: 'Alle' },
-    { value: 'verbod', label: 'Verbodsborden' },
-    { value: 'gebod', label: 'Gebodsborden' },
-    { value: 'voorrang', label: 'Voorrangsborden' },
-    { value: 'waarschuwing', label: 'Waarschuwingsborden' },
-    { value: 'aanwijzing', label: 'Aanwijzingsborden' },
+    { value: "all", label: "Alle" },
+    { value: "verbod", label: "Verbodsborden" },
+    { value: "gebod", label: "Gebodsborden" },
+    { value: "voorrang", label: "Voorrangsborden" },
+    { value: "waarschuwing", label: "Waarschuwingsborden" },
+    { value: "aanwijzing", label: "Aanwijzingsborden" },
   ];
 
   return (
@@ -47,7 +53,8 @@ export default function Kennisbank() {
       <div>
         <h1 className="text-3xl font-bold">Kennisbank RVV 1990</h1>
         <p className="text-muted-foreground">
-          Overzicht van verkeerstekens volgens het Reglement Verkeersregels en Verkeerstekens 1990
+          Overzicht van verkeerstekens volgens het Reglement Verkeersregels en
+          Verkeerstekens 1990
         </p>
       </div>
 
@@ -75,25 +82,40 @@ export default function Kennisbank() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {isLoading ? (
-          <p className="col-span-full text-center text-muted-foreground">Laden...</p>
+          <>
+            {Array.from({ length: 9 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </>
         ) : roadSigns?.length === 0 ? (
           <Card className="col-span-full">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <SignpostBig className="h-16 w-16 text-muted-foreground/50 mb-4" />
               <p className="text-muted-foreground text-center">
-                Geen verkeerstekens gevonden.<br />
+                Geen verkeerstekens gevonden.
+                <br />
                 Neem contact op met een beheerder om tekens toe te voegen.
               </p>
             </CardContent>
           </Card>
         ) : (
           roadSigns?.map((sign) => (
-            <Card key={sign.id} className="overflow-hidden transition-all hover:shadow-lg">
+            <Card
+              key={sign.id}
+              className="overflow-hidden transition-all hover:shadow-lg"
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
                     <CardTitle className="text-lg">{sign.sign_code}</CardTitle>
-                    <Badge variant="secondary">{sign.category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</Badge>
+                    <Badge variant="secondary">
+                      {sign.category
+                        .split("_")
+                        .map(
+                          (word) => word.charAt(0).toUpperCase() + word.slice(1)
+                        )
+                        .join(" ")}
+                    </Badge>
                   </div>
                   {sign.image_url && (
                     <img

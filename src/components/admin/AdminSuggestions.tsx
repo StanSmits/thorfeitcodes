@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Check, X, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { SkeletonTable } from '../ui/SkeletonCard';
 
 interface AdminSuggestionsProps {
   onApprove?: (suggestion: any) => void;
@@ -110,7 +111,7 @@ export function AdminSuggestions({ onApprove }: AdminSuggestionsProps) {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-center text-muted-foreground">Laden...</p>
+            <SkeletonTable />
           ) : suggestions?.length === 0 ? (
             <p className="text-center text-muted-foreground">Geen suggesties gevonden</p>
           ) : (

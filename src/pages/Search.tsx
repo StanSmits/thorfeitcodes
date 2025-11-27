@@ -27,6 +27,7 @@ import { Search as SearchIcon, FileText, Plus } from "lucide-react";
 import { RVWGenerator } from "@/components/RVWGenerator";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SkeletonCard } from "@/components/ui/SkeletonCard";
 
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -191,7 +192,7 @@ export default function Search() {
           )}
 
           <AnimatePresence mode="wait">
-            <motion.div 
+            <motion.div
               key={viewMode + searchTerm}
               initial={{ opacity: 0, scale: 0.95, filter: "blur(8px)" }}
               animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
@@ -200,9 +201,11 @@ export default function Search() {
               className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
             >
               {isLoading ? (
-                <p className="col-span-full text-center text-muted-foreground">
-                  Laden...
-                </p>
+                <>
+                  {Array.from({ length: viewMode === "all" ? 9 : 9 }).map((_, i) => (
+                    <SkeletonCard key={i} />
+                  ))}
+                </>
               ) : feitcodes?.length === 0 ? (
               <div className="col-span-full text-center space-y-4">
                 <p className="text-muted-foreground">Geen feitcodes gevonden</p>

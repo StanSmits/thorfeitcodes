@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { SkeletonTable } from '../ui/SkeletonCard';
 
 export function AdminRoadSigns() {
   const queryClient = useQueryClient();
@@ -206,7 +207,7 @@ export function AdminRoadSigns() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-center text-muted-foreground">Laden...</p>
+            <SkeletonTable />
           ) : (
             <Table>
               <TableHeader>

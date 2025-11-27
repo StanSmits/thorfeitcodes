@@ -27,9 +27,10 @@ import {
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import { CalendarIcon, X, FileText, ChevronRight, Trash } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { SkeletonCard } from "@/components/ui/SkeletonCard";
 
 export default function SavedRvws() {
   const [factcodeFilter, setFactcodeFilter] = useState<string>("all");
@@ -41,16 +42,26 @@ export default function SavedRvws() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: any) => {
-      const { error } = await supabase.from("saved_rvws").delete().eq("id", id as any);
+      const { error } = await supabase
+        .from("saved_rvws")
+        .delete()
+        .eq("id", id as any);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Verwijderd", description: "De opgeslagen RvW is verwijderd." });
+      toast({
+        title: "Verwijderd",
+        description: "De opgeslagen RvW is verwijderd.",
+      });
       queryClient.invalidateQueries({ queryKey: ["saved-rvws"] });
     },
     onError: (err) => {
       console.error("Failed to delete saved RvW", err);
-      toast({ title: "Fout", description: "Kon opgeslagen RvW niet verwijderen.", variant: "destructive" });
+      toast({
+        title: "Fout",
+        description: "Kon opgeslagen RvW niet verwijderen.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -113,13 +124,24 @@ export default function SavedRvws() {
   const loadRecentRvw = async (rvw: any) => {
     // Best-effort: update the saved timestamp so it appears recent
     try {
-      await supabase.from('saved_rvws').update({ created_at: new Date().toISOString() }).eq('id', rvw.id);
+      await supabase
+        .from("saved_rvws")
+        .update({ created_at: new Date().toISOString() })
+        .eq("id", rvw.id);
     } catch (err) {
-      console.error('Failed to update timestamp', err);
+      console.error("Failed to update timestamp", err);
     }
 
     // Navigate to the Search page and pass prefill data via location.state
-    navigate('/', { state: { prefill: { factcode: rvw.factcode, form_values: rvw.form_values, location_value: rvw.location_value } } });
+    navigate("/", {
+      state: {
+        prefill: {
+          factcode: rvw.factcode,
+          form_values: rvw.form_values,
+          location_value: rvw.location_value,
+        },
+      },
+    });
   };
 
   const clearFilters = () => {
@@ -250,11 +272,11 @@ export default function SavedRvws() {
 
       <div className="space-y-4">
         {isLoading ? (
-          <Card>
-            <CardContent className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">Laden...</p>
-            </CardContent>
-          </Card>
+          <>
+            {Array.from({ length: 9 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </>
         ) : filteredRvws.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -293,7 +315,11 @@ export default function SavedRvws() {
                       onClick={(e) => {
                         e.stopPropagation();
                         // Confirm before deletion
-                        if (confirm('Weet je zeker dat je deze opgeslagen RvW wilt verwijderen?')) {
+                        if (
+                          confirm(
+                            "Weet je zeker dat je deze opgeslagen RvW wilt verwijderen?"
+                          )
+                        ) {
                           deleteMutation.mutate(rvw.id);
                         }
                       }}
