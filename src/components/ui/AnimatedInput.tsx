@@ -2,13 +2,13 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
-export interface AnimatedInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface AnimatedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onAnimationStart' | 'onDragStart' | 'onDragEnd' | 'onDrag'> {
   label?: string;
   error?: string;
 }
 
 const AnimatedInput = React.forwardRef<HTMLInputElement, AnimatedInputProps>(
-  ({ className, type, label, error, ...props }, ref) => {
+  ({ className, type, label, error, onFocus, onBlur, onChange, ...props }, ref) => {
     const [isFocused, setIsFocused] = React.useState(false);
     const [hasValue, setHasValue] = React.useState(false);
 
@@ -29,15 +29,15 @@ const AnimatedInput = React.forwardRef<HTMLInputElement, AnimatedInputProps>(
           ref={ref}
           onFocus={(e) => {
             setIsFocused(true);
-            props.onFocus?.(e);
+            onFocus?.(e as React.FocusEvent<HTMLInputElement>);
           }}
           onBlur={(e) => {
             setIsFocused(false);
-            props.onBlur?.(e);
+            onBlur?.(e as React.FocusEvent<HTMLInputElement>);
           }}
           onChange={(e) => {
             setHasValue(!!e.target.value);
-            props.onChange?.(e);
+            onChange?.(e as React.ChangeEvent<HTMLInputElement>);
           }}
           {...props}
         />

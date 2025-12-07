@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { FieldOptionsEditor } from './FieldOptionsEditor';
+import { ConditionalRulesEditor } from './ConditionalRulesEditor';
 import { Badge } from '@/components/ui/badge';
 import { SkeletonTable } from '@/components/ui/SkeletonCard';
 
@@ -48,6 +49,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     tooltip_text: '',
   });
   const [fields, setFields] = useState<FieldConfig[]>([]);
+  const [conditionalRules, setConditionalRules] = useState<Record<string, any>>({});
 
   // Handle prefill data from approved suggestions
   useEffect(() => {
@@ -286,6 +288,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
         ...formData,
         field_options,
         field_tooltips,
+        conditional_rules: conditionalRules,
         location_field: formData.location_field || null,
       };
 
@@ -343,6 +346,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
       tooltip_text: '',
     });
     setFields([]);
+    setConditionalRules({});
   };
 
   const handleEdit = (code: any) => {
@@ -385,6 +389,10 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     });
     
     setFields(convertedFields);
+    
+    // Load conditional rules
+    setConditionalRules(code.conditional_rules || {});
+    
     setOpen(true);
   };
 
@@ -575,6 +583,17 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
                 <FieldOptionsEditor fields={fields} onChange={setFields} />
                 <p className="text-sm text-muted-foreground mt-2">Tip: kies bij dropdown/radio de opties en vul label en waarde in.</p>
               </div>
+
+              {/* Conditional Rules Editor */}
+              {fields.length >= 2 && (
+                <div className="border-t pt-4">
+                  <ConditionalRulesEditor
+                    fields={fields}
+                    conditionalRules={conditionalRules}
+                    onChange={setConditionalRules}
+                  />
+                </div>
+              )}
 
               <div className="flex gap-2 pt-4">
                 <Button type="submit" disabled={saveMutation.isPending}>

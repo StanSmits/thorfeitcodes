@@ -201,6 +201,41 @@ export function RVWGenerator({
 
   const fieldOptions = factcode.field_options || {};
   const fieldTooltips = factcode.field_tooltips || {};
+  const conditionalRules = factcode.conditional_rules || {};
+
+  // Check if a field is visible based on conditional rules
+  const isFieldVisible = (fieldName: string): boolean => {
+    const rule = conditionalRules[fieldName];
+    if (!rule) return true; // No rule means always visible
+
+    const { dependsOn, showWhen } = rule;
+    if (!dependsOn || !showWhen) return true;
+
+    const dependsOnValue = formValues[dependsOn] || "";
+    const { operator, value } = showWhen;
+
+    switch (operator) {
+      case "equals":
+        return dependsOnValue === value;
+      case "notEquals":
+        return dependsOnValue !== value;
+      case "contains":
+        return dependsOnValue.includes(value);
+      case "notContains":
+        return !dependsOnValue.includes(value);
+      case "isEmpty":
+        return dependsOnValue.trim() === "";
+      case "isNotEmpty":
+        return dependsOnValue.trim() !== "";
+      default:
+        return true;
+    }
+  };
+
+  // Get all visible fields
+  const visibleFields = useMemo(() => {
+    return Object.keys(fieldOptions).filter((field) => isFieldVisible(field));
+  }, [fieldOptions, formValues, conditionalRules]);
 
   // Extract field names from template in order of appearance
   const orderedFields = useMemo(() => {
@@ -218,20 +253,47 @@ export function RVWGenerator({
       });
   }, [factcode.template]);
 
-  // Auto-generate text as form values change
+  // Get visible ordered fields (for form rendering)
+  const visibleOrderedFields = useMemo(() => {
+    return orderedFields.filter((field) => isFieldVisible(field));
+  }, [orderedFields, formValues, conditionalRules]);
+
+  // Auto-generate text as form values change, handling hidden fields
   const generatedText = useMemo(() => {
     let result = factcode.template || "";
 
+    // First, process all visible fields
     Object.entries(formValues).forEach(([key, value]) => {
-      const placeholder = `{${key}}`;
-      result = result.replace(
-        new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
-        value
-      );
+      if (isFieldVisible(key)) {
+        const placeholder = `{${key}}`;
+        result = result.replace(
+          new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
+          value
+        );
+      }
     });
 
+    // For hidden fields, we need to remove the related text sections
+    // Find sentences/phrases containing hidden field placeholders and remove them
+    orderedFields.forEach((fieldName) => {
+      if (!isFieldVisible(fieldName)) {
+        const placeholder = `{${fieldName}}`;
+        const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        
+        // Remove the placeholder along with its surrounding sentence structure
+        // Pattern 1: Remove whole sentence ending with the placeholder
+        result = result.replace(
+          new RegExp(`[^.]*${escapedPlaceholder}[^.]*\\.?\\s*`, "g"),
+          ""
+        );
+      }
+    });
+
+    // Clean up extra whitespace and empty lines
+    result = result.replace(/\n\s*\n\s*\n/g, "\n\n").trim();
+
     return result;
-  }, [formValues, factcode.template]);
+  }, [formValues, factcode.template, orderedFields, conditionalRules]);
 
   const reasonPrefix = useMemo(() => {
     if (isStopped) {
@@ -550,22 +612,26 @@ export function RVWGenerator({
 
   // Render generated text with highlighted unfilled fields
   const renderGeneratedTextWithHighlights = () => {
-    const template = factcode.template || "";
+    // Use the generatedText which already has hidden fields' sections removed
+    const textToRender = generatedText;
     const parts: JSX.Element[] = [];
     let lastIndex = 0;
     const placeholderRegex = /\{([^}]+)\}/g;
     let match;
     let key = 0;
 
-    while ((match = placeholderRegex.exec(template)) !== null) {
+    while ((match = placeholderRegex.exec(textToRender)) !== null) {
       const fieldName = match[1];
       const matchStart = match.index;
+
+      // Skip if this field is not visible (shouldn't happen as they're removed from generatedText)
+      if (!isFieldVisible(fieldName)) continue;
 
       // Add text before placeholder
       if (matchStart > lastIndex) {
         parts.push(
           <span key={`text-${key++}`}>
-            {template.substring(lastIndex, matchStart)}
+            {textToRender.substring(lastIndex, matchStart)}
           </span>
         );
       }
@@ -590,9 +656,9 @@ export function RVWGenerator({
     }
 
     // Add remaining text
-    if (lastIndex < template.length) {
+    if (lastIndex < textToRender.length) {
       parts.push(
-        <span key={`text-${key++}`}>{template.substring(lastIndex)}</span>
+        <span key={`text-${key++}`}>{textToRender.substring(lastIndex)}</span>
       );
     }
 
@@ -600,7 +666,7 @@ export function RVWGenerator({
   };
 
   const hasUnfilledFields = useMemo(() => {
-    const missingField = orderedFields.some(
+    const missingField = visibleOrderedFields.some(
       (field) => !formValues[field] || formValues[field].trim() === ""
     );
     const missingAnders =
@@ -608,7 +674,7 @@ export function RVWGenerator({
       notStoppedReason === "anders" &&
       (!andersText || andersText.trim() === "");
     return missingField || missingAnders;
-  }, [orderedFields, formValues, isStopped, notStoppedReason, andersText]);
+  }, [visibleOrderedFields, formValues, isStopped, notStoppedReason, andersText]);
 
   const filteredRecentRvws = useMemo(() => {
     return recentRvws.filter((rvw) => {
@@ -688,7 +754,7 @@ export function RVWGenerator({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {orderedFields.map((fieldName) => {
+            {visibleOrderedFields.map((fieldName) => {
               const options = fieldOptions[fieldName];
               if (!options) {
                 // Free text field if no options defined

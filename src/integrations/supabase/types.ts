@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -56,6 +56,7 @@ export type Database = {
       feitcodes: {
         Row: {
           access_count: number
+          conditional_rules: Json | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -72,6 +73,7 @@ export type Database = {
         }
         Insert: {
           access_count?: number
+          conditional_rules?: Json | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -88,6 +90,7 @@ export type Database = {
         }
         Update: {
           access_count?: number
+          conditional_rules?: Json | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -153,15 +156,7 @@ export type Database = {
           subscription_status?: Database["public"]["Enums"]["subscription_status_enum"]
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "admin_users_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       road_signs: {
         Row: {
@@ -263,36 +258,11 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "admin_users_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_roles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_users_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
-      admin_users_view: {
-        Row: {
-          created_at: string | null
-          email: string | null
-          full_name: string | null
-          id: string | null
-          roles: string[] | null
-          updated_at: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       create_missing_profiles: { Args: never; Returns: undefined }
@@ -306,6 +276,14 @@ export type Database = {
         }[]
       }
       get_effective_role_for_current_user: { Args: never; Returns: string }
+      get_old_role: {
+        Args: { uid: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      get_profile_role: {
+        Args: { p_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"][]

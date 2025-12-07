@@ -2,13 +2,13 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
-export interface AnimatedTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface AnimatedTextareaProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onAnimationStart' | 'onDragStart' | 'onDragEnd' | 'onDrag'> {
   label?: string;
   error?: string;
 }
 
 const AnimatedTextarea = React.forwardRef<HTMLTextAreaElement, AnimatedTextareaProps>(
-  ({ className, label, error, ...props }, ref) => {
+  ({ className, label, error, onFocus, onBlur, onChange, ...props }, ref) => {
     const [isFocused, setIsFocused] = React.useState(false);
     const [hasValue, setHasValue] = React.useState(false);
 
@@ -28,15 +28,15 @@ const AnimatedTextarea = React.forwardRef<HTMLTextAreaElement, AnimatedTextareaP
           ref={ref}
           onFocus={(e) => {
             setIsFocused(true);
-            props.onFocus?.(e);
+            onFocus?.(e as React.FocusEvent<HTMLTextAreaElement>);
           }}
           onBlur={(e) => {
             setIsFocused(false);
-            props.onBlur?.(e);
+            onBlur?.(e as React.FocusEvent<HTMLTextAreaElement>);
           }}
           onChange={(e) => {
             setHasValue(!!e.target.value);
-            props.onChange?.(e);
+            onChange?.(e as React.ChangeEvent<HTMLTextAreaElement>);
           }}
           {...props}
         />
