@@ -65,6 +65,9 @@ export type Database = {
           factcode: string
           field_options: Json | null
           field_tooltips: Json | null
+          grondslag_artikel: string | null
+          grondslag_type: string | null
+          grondslag_url: string | null
           id: string
           image_url: string | null
           location_field: string | null
@@ -82,6 +85,9 @@ export type Database = {
           factcode?: string
           field_options?: Json | null
           field_tooltips?: Json | null
+          grondslag_artikel?: string | null
+          grondslag_type?: string | null
+          grondslag_url?: string | null
           id?: string
           image_url?: string | null
           location_field?: string | null
@@ -99,6 +105,9 @@ export type Database = {
           factcode?: string
           field_options?: Json | null
           field_tooltips?: Json | null
+          grondslag_artikel?: string | null
+          grondslag_type?: string | null
+          grondslag_url?: string | null
           id?: string
           image_url?: string | null
           location_field?: string | null

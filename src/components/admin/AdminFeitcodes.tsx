@@ -47,6 +47,9 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     location_field: '',
     image_url: '',
     tooltip_text: '',
+    grondslag_type: '',
+    grondslag_artikel: '',
+    grondslag_url: '',
   });
   const [fields, setFields] = useState<FieldConfig[]>([]);
   const [conditionalRules, setConditionalRules] = useState<Record<string, any>>({});
@@ -61,6 +64,9 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
         location_field: prefillData.location_field || '',
         image_url: prefillData.image_url || '',
         tooltip_text: prefillData.tooltip_text || '',
+        grondslag_type: prefillData.grondslag_type || '',
+        grondslag_artikel: prefillData.grondslag_artikel || '',
+        grondslag_url: prefillData.grondslag_url || '',
       });
       
       // Convert field_options to FieldConfig array if provided
@@ -290,6 +296,9 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
         field_tooltips,
         conditional_rules: conditionalRules,
         location_field: formData.location_field || null,
+        grondslag_type: formData.grondslag_type || null,
+        grondslag_artikel: formData.grondslag_artikel || null,
+        grondslag_url: formData.grondslag_url || null,
       };
 
       if (editingCode) {
@@ -344,6 +353,9 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
       template: '',
       image_url: '',
       tooltip_text: '',
+      grondslag_type: '',
+      grondslag_artikel: '',
+      grondslag_url: '',
     });
     setFields([]);
     setConditionalRules({});
@@ -358,6 +370,9 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
       location_field: code.location_field || '',
       image_url: code.image_url || '',
       tooltip_text: code.tooltip_text || '',
+      grondslag_type: code.grondslag_type || '',
+      grondslag_artikel: code.grondslag_artikel || '',
+      grondslag_url: code.grondslag_url || '',
     });
     
     // Convert field_options and field_tooltips back to FieldConfig array
@@ -579,6 +594,48 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
                 )}
               </div>
 
+              {/* Grondslag (Legal Basis) Section */}
+              <div className="space-y-4 border-t pt-4">
+                <Label className="text-base font-semibold">Wettelijke grondslag</Label>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="grondslag_type">Type</Label>
+                    <Select
+                      value={formData.grondslag_type || '__none__'}
+                      onValueChange={(value) => setFormData({ ...formData, grondslag_type: value === '__none__' ? '' : value })}
+                    >
+                      <SelectTrigger id="grondslag_type">
+                        <SelectValue placeholder="Selecteer type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Geen</SelectItem>
+                        <SelectItem value="RVV 1990">RVV 1990</SelectItem>
+                        <SelectItem value="APV">APV</SelectItem>
+                        <SelectItem value="ASV">ASV</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="grondslag_artikel">Artikel</Label>
+                    <Input
+                      id="grondslag_artikel"
+                      value={formData.grondslag_artikel}
+                      onChange={(e) => setFormData({ ...formData, grondslag_artikel: e.target.value })}
+                      placeholder="bijv. Artikel 10"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-3">
+                    <Label htmlFor="grondslag_url">URL naar wetsartikel</Label>
+                    <Input
+                      id="grondslag_url"
+                      value={formData.grondslag_url}
+                      onChange={(e) => setFormData({ ...formData, grondslag_url: e.target.value })}
+                      placeholder="https://wetten.overheid.nl/..."
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="border-t pt-4">
                 <FieldOptionsEditor fields={fields} onChange={setFields} />
                 <p className="text-sm text-muted-foreground mt-2">Tip: kies bij dropdown/radio de opties en vul label en waarde in.</p>
@@ -687,137 +744,176 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
             <SkeletonTable />
           ) : (
             <>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]"></TableHead>
-                      <TableHead className="w-[140px]">Code</TableHead>
-                      <TableHead>Omschrijving</TableHead>
-                      <TableHead className="w-[100px] text-right">Acties</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredFeitcodes?.length === 0 ? (
+              <div className="rounded-md border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table className="w-full table-fixed">
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                          Geen feitcodes gevonden
-                        </TableCell>
+                        <TableHead className="w-10"></TableHead>
+                        <TableHead className="w-24">Code</TableHead>
+                        <TableHead className="w-[40%]">Omschrijving</TableHead>
+                        <TableHead className="w-20 hidden sm:table-cell">Grondslag</TableHead>
+                        <TableHead className="w-16 hidden md:table-cell text-center">Views</TableHead>
+                        <TableHead className="w-20 text-right">Acties</TableHead>
                       </TableRow>
-                    ) : (
-                      paginatedFeitcodes?.map((code) => {
-                      const isExpanded = expandedRows.has(code.id);
-                      const hasDescription = code.description && code.description.length > 0;
-                      
-                      return (
-                        <>
-                          <TableRow 
-                            key={code.id} 
-                            className={`group ${hasDescription ? 'cursor-pointer hover:bg-muted/50' : ''}`}
-                            onClick={() => hasDescription && toggleRowExpansion(code.id)}
-                          >
-                            <TableCell className="py-3">
-                              {hasDescription && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleRowExpansion(code.id);
-                                  }}
-                                >
-                                  {isExpanded ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4" />
+                    </TableHeader>
+                    <TableBody>
+                      {filteredFeitcodes?.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            Geen feitcodes gevonden
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedFeitcodes?.map((code) => {
+                        const isExpanded = expandedRows.has(code.id);
+                        const hasDescription = code.description && code.description.length > 0;
+                        
+                        return (
+                          <>
+                            <TableRow 
+                              key={code.id} 
+                              className={`group ${hasDescription ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                              onClick={() => hasDescription && toggleRowExpansion(code.id)}
+                            >
+                              <TableCell className="py-2">
+                                {hasDescription && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleRowExpansion(code.id);
+                                    }}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronUp className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-mono text-sm font-medium py-2">
+                                {code.factcode}
+                              </TableCell>
+                              <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                                <div className="truncate text-sm text-muted-foreground">
+                                  {code.description || '-'}
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-2 hidden sm:table-cell">
+                                {code.grondslag_type ? (
+                                  <Badge variant="outline" className="text-xs truncate max-w-full">
+                                    {code.grondslag_type}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="py-2 hidden md:table-cell text-center">
+                                <span className="text-xs text-muted-foreground">
+                                  {code.access_count || 0}
+                                </span>
+                              </TableCell>
+                              <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex justify-end gap-1">
+                                  {!isExpanded && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEdit(code)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    <span className="sr-only">Bewerken</span>
+                                  </Button>
                                   )}
-                                </Button>
-                              )}
-                            </TableCell>
-                            <TableCell className="font-mono font-medium py-3">
-                              {code.factcode}
-                            </TableCell>
-                            <TableCell className="py-3" onClick={(e) => e.stopPropagation()}>
-                              <div className="max-w-2xl truncate text-sm text-muted-foreground">
-                                {code.description || '-'}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex justify-end gap-1">
-                                {!isExpanded && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEdit(code)}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                  <span className="sr-only">Bewerken</span>
-                                </Button>
-                                )}
-                                {isAdmin && !isExpanded && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      if (confirm('Weet u zeker dat u deze feitcode wilt verwijderen?')) {
-                                        deleteMutation.mutate(code.id);
-                                      }
-                                    }}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                    <span className="sr-only">Verwijderen</span>
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          {isExpanded && hasDescription && (
-                            <TableRow key={`${code.id}-expanded`} className="bg-muted/30">
-                              <TableCell colSpan={4} className="py-4">
-                                <div className="px-4">
-                                  <h4 className="font-semibold text-sm mb-2">Volledige omschrijving:</h4>
-                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    {code.description}
-                                  </p>
-                                  <div className="flex justify-start md:justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEdit(code)}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                  <span className="sr-only">Bewerken</span>
-                                </Button>
-                                {isAdmin && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      if (confirm('Weet u zeker dat u deze feitcode wilt verwijderen?')) {
-                                        deleteMutation.mutate(code.id);
-                                      }
-                                    }}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                    <span className="sr-only">Verwijderen</span>
-                                  </Button>
-                                )}
-                              </div>
+                                  {isAdmin && !isExpanded && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (confirm('Weet u zeker dat u deze feitcode wilt verwijderen?')) {
+                                          deleteMutation.mutate(code.id);
+                                        }
+                                      }}
+                                      className="h-7 w-7 p-0"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                      <span className="sr-only">Verwijderen</span>
+                                    </Button>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>
-                          )}
-                        </>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                            {isExpanded && hasDescription && (
+                              <TableRow key={`${code.id}-expanded`} className="bg-muted/30">
+                                <TableCell colSpan={6} className="py-4">
+                                  <div className="px-4 space-y-3">
+                                    <div>
+                                      <h4 className="font-semibold text-sm mb-1">Volledige omschrijving:</h4>
+                                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                        {code.description}
+                                      </p>
+                                    </div>
+                                    {code.grondslag_type && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">Grondslag:</span>
+                                        {code.grondslag_url ? (
+                                          <a
+                                            href={code.grondslag_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                                          >
+                                            {code.grondslag_artikel} {code.grondslag_type}
+                                          </a>
+                                        ) : (
+                                          <span className="text-sm text-muted-foreground">
+                                            {code.grondslag_artikel} {code.grondslag_type}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className="flex justify-end gap-1 pt-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleEdit(code)}
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                        <span className="sr-only">Bewerken</span>
+                                      </Button>
+                                      {isAdmin && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            if (confirm('Weet u zeker dat u deze feitcode wilt verwijderen?')) {
+                                              deleteMutation.mutate(code.id);
+                                            }
+                                          }}
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <Trash2 className="h-4 w-4 text-destructive" />
+                                          <span className="sr-only">Verwijderen</span>
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
             
             {filteredFeitcodes.length > 0 && (
