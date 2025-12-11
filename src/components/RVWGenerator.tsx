@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,8 +50,9 @@ export function RVWGenerator({
     x: number;
     y: number;
   }>(null);
-  // Recent RvWs for the current location
-  const [recentRvws, setRecentRvws] = useState<any[]>([]);
+  // Recent RvWs: top 3 and full list (deduped by location)
+  const [recentRvwsTop, setRecentRvwsTop] = useState<any[]>([]);
+  const [recentRvwsAll, setRecentRvwsAll] = useState<any[]>([]);
 
   const currentPrefill = useMemo(() => {
     return initialFormValues ?? formValues;
@@ -173,7 +174,7 @@ export function RVWGenerator({
           .select("*")
           .eq("factcode", factcode.factcode)
           .order("created_at", { ascending: false })
-          .limit(50); // Get more to find unique locations
+          .limit(100); // more entries to find older suggestions
 
         if (error) {
           console.error("Failed to fetch recent RvWs", error);
@@ -181,16 +182,18 @@ export function RVWGenerator({
         }
 
         // Group by location and keep only the 3 most recent unique locations
-        const locationMap = new Map();
+        const locationMap = new Map<string, any>();
         (data || []).forEach((rvw: any) => {
-          if (!locationMap.has(rvw.location_value)) {
-            locationMap.set(rvw.location_value, rvw);
+          const key = String(rvw.location_value || "").trim();
+          if (!key) return;
+          if (!locationMap.has(key)) {
+            locationMap.set(key, rvw);
           }
         });
 
-        // Get first 3 unique locations
-        const uniqueLocations = Array.from(locationMap.values()).slice(0, 3);
-        setRecentRvws(uniqueLocations);
+        const deduped = Array.from(locationMap.values());
+        setRecentRvwsTop(deduped.slice(0, 3));
+        setRecentRvwsAll(deduped);
       } catch (err) {
         console.error("Error fetching recent RvWs", err);
       }
@@ -199,12 +202,12 @@ export function RVWGenerator({
     fetchRecentRvws();
   }, [factcode.factcode, factcode.location_field]);
 
-  const fieldOptions = factcode.field_options || {};
-  const fieldTooltips = factcode.field_tooltips || {};
-  const conditionalRules = factcode.conditional_rules || {};
+  const fieldOptions = useMemo(() => factcode.field_options || {}, [factcode.field_options]);
+  const fieldTooltips = useMemo(() => factcode.field_tooltips || {}, [factcode.field_tooltips]);
+  const conditionalRules = useMemo(() => factcode.conditional_rules || {}, [factcode.conditional_rules]);
 
   // Check if a field is visible based on conditional rules
-  const isFieldVisible = (fieldName: string): boolean => {
+  const isFieldVisible = useCallback((fieldName: string): boolean => {
     const rule = conditionalRules[fieldName];
     if (!rule) return true; // No rule means always visible
 
@@ -230,12 +233,12 @@ export function RVWGenerator({
       default:
         return true;
     }
-  };
+  }, [conditionalRules, formValues]);
 
   // Get all visible fields
   const visibleFields = useMemo(() => {
     return Object.keys(fieldOptions).filter((field) => isFieldVisible(field));
-  }, [fieldOptions, formValues, conditionalRules]);
+  }, [fieldOptions, isFieldVisible]);
 
   // Extract field names from template in order of appearance
   const orderedFields = useMemo(() => {
@@ -256,7 +259,7 @@ export function RVWGenerator({
   // Get visible ordered fields (for form rendering)
   const visibleOrderedFields = useMemo(() => {
     return orderedFields.filter((field) => isFieldVisible(field));
-  }, [orderedFields, formValues, conditionalRules]);
+  }, [orderedFields, isFieldVisible]);
 
   // Auto-generate text as form values change, handling hidden fields
   const generatedText = useMemo(() => {
@@ -293,7 +296,7 @@ export function RVWGenerator({
     result = result.replace(/\n\s*\n\s*\n/g, "\n\n").trim();
 
     return result;
-  }, [formValues, factcode.template, orderedFields, conditionalRules]);
+  }, [formValues, factcode.template, orderedFields, isFieldVisible]);
 
   const reasonPrefix = useMemo(() => {
     if (isStopped) {
@@ -596,6 +599,8 @@ export function RVWGenerator({
       );
     } else {
       // Free text input
+      const isLocation = fieldName === factcode.location_field;
+      const typed = String(formValues[fieldName] || "").trim();
       return (
         <div key={fieldName} className="space-y-2">
           <Label htmlFor={fieldName}>{label}</Label>
@@ -605,6 +610,29 @@ export function RVWGenerator({
             onChange={(e) => updateFormValue(fieldName, e.target.value)}
             placeholder={`Voer ${label.toLowerCase()} in`}
           />
+          {isLocation && typed && locationSuggestions.length > 0 && (
+            <div className="mt-2 rounded-md border bg-card">
+              <ul className="max-h-56 overflow-auto py-1">
+                {locationSuggestions.map((rvw) => (
+                  <li key={rvw.id} className="bg-muted/25 hover:bg-muted/70 transition-colors">
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                      onClick={() => {
+                        updateFormValue(fieldName, rvw.location_value || "");
+                        loadRecentRvw(rvw);
+                      }}
+                    >
+                      {highlightMatch(String(rvw.location_value || ""), typed)}
+                      <span className="block text-xs text-muted-foreground">
+                        Laatst gebruikt: {new Date(rvw.created_at).toLocaleDateString("nl-NL")}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       );
     }
@@ -677,7 +705,7 @@ export function RVWGenerator({
   }, [visibleOrderedFields, formValues, isStopped, notStoppedReason, andersText]);
 
   const filteredRecentRvws = useMemo(() => {
-    return recentRvws.filter((rvw) => {
+    return recentRvwsTop.filter((rvw) => {
       // Exclude if saved form_values deep-equals current prefill
       if (deepEqual(rvw.form_values, currentPrefill)) return false;
       // Also exclude if generated_text matches the current full generated text
@@ -685,7 +713,38 @@ export function RVWGenerator({
         return false;
       return true;
     });
-  }, [recentRvws, currentPrefill, fullGeneratedText]);
+  }, [recentRvwsTop, currentPrefill, fullGeneratedText]);
+
+  // Suggestions for location input based on typed value, excluding top-3
+  const locationSuggestions = useMemo(() => {
+    const locField = factcode.location_field;
+    const typed = String(formValues[locField] || "").trim().toLowerCase();
+    if (!locField || !typed) return [] as any[];
+    const topSet = new Set(recentRvwsTop.map((r) => String(r.location_value || "")));
+    return recentRvwsAll
+      .filter((rvw) => {
+        const loc = String(rvw.location_value || "").toLowerCase();
+        if (!loc.includes(typed)) return false;
+        if (topSet.has(String(rvw.location_value || ""))) return false;
+        return true;
+      })
+      .slice(0, 8);
+  }, [factcode.location_field, formValues, recentRvwsTop, recentRvwsAll]);
+
+  const highlightMatch = (text: string, query: string) => {
+    const i = text.toLowerCase().indexOf(query.toLowerCase());
+    if (i === -1) return <span>{text}</span>;
+    const before = text.slice(0, i);
+    const match = text.slice(i, i + query.length);
+    const after = text.slice(i + query.length);
+    return (
+      <span>
+        {before}
+        <span className="font-semibold">{match}</span>
+        {after}
+      </span>
+    );
+  };
 
   const grondslagArtikelFormatter = (artikel: string) => {
     let formatted = artikel.trim();
@@ -823,9 +882,7 @@ export function RVWGenerator({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="geen_bestuurder">
-                        Geen bestuurder
-                      </SelectItem>
+                      <SelectItem value="geen_bestuurder">Geen bestuurder</SelectItem>
                       <SelectItem value="stopteken">Geen stopteken kunnen geven</SelectItem>
                       <SelectItem value="anders">Anders, namelijk</SelectItem>
                     </SelectContent>
