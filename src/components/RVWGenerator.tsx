@@ -53,6 +53,8 @@ export function RVWGenerator({
   // Recent RvWs: top 3 and full list (deduped by location)
   const [recentRvwsTop, setRecentRvwsTop] = useState<any[]>([]);
   const [recentRvwsAll, setRecentRvwsAll] = useState<any[]>([]);
+  // Track last imported location to avoid showing suggestions when it matches exactly
+  const [lastImportedLocation, setLastImportedLocation] = useState<string>("");
 
   const currentPrefill = useMemo(() => {
     return initialFormValues ?? formValues;
@@ -162,7 +164,8 @@ export function RVWGenerator({
   useEffect(() => {
     const locationField = factcode.location_field;
     if (!locationField) {
-      setRecentRvws([]);
+      setRecentRvwsTop([]);
+      setRecentRvwsAll([]);
       return;
     }
 
@@ -408,6 +411,7 @@ export function RVWGenerator({
   const loadRecentRvw = async (rvw: any) => {
     if (rvw.form_values) {
       setFormValues(rvw.form_values);
+      setLastImportedLocation(String(rvw.location_value || ""));
 
       // Update the timestamp by re-saving with current time
       try {
@@ -417,17 +421,27 @@ export function RVWGenerator({
           .eq("id", rvw.id);
 
         // Refresh the list
-        const locationField = factcode.location_field;
-        if (locationField) {
-          const locationValue = rvw.location_value;
-          const { data } = await supabase
+        // Recompute recent top and all lists after update
+        try {
+          const { data, error } = await supabase
             .from("saved_rvws")
             .select("*")
             .eq("factcode", factcode.factcode)
-            .eq("location_value", locationValue)
             .order("created_at", { ascending: false })
-            .limit(3);
-          setRecentRvws(data || []);
+            .limit(100);
+          if (!error) {
+            const locationMap = new Map<string, any>();
+            (data || []).forEach((item: any) => {
+              const key = String(item.location_value || "").trim();
+              if (!key) return;
+              if (!locationMap.has(key)) locationMap.set(key, item);
+            });
+            const deduped = Array.from(locationMap.values());
+            setRecentRvwsTop(deduped.slice(0, 3));
+            setRecentRvwsAll(deduped);
+          }
+        } catch (e) {
+          // ignore
         }
       } catch (err) {
         console.error("Failed to update timestamp", err);
@@ -601,6 +615,10 @@ export function RVWGenerator({
       // Free text input
       const isLocation = fieldName === factcode.location_field;
       const typed = String(formValues[fieldName] || "").trim();
+      const isExactImported =
+        isLocation &&
+        typed.length > 0 &&
+        typed.toLowerCase() === String(lastImportedLocation || "").toLowerCase();
       return (
         <div key={fieldName} className="space-y-2">
           <Label htmlFor={fieldName}>{label}</Label>
@@ -610,7 +628,7 @@ export function RVWGenerator({
             onChange={(e) => updateFormValue(fieldName, e.target.value)}
             placeholder={`Voer ${label.toLowerCase()} in`}
           />
-          {isLocation && typed && locationSuggestions.length > 0 && (
+          {isLocation && typed && !isExactImported && locationSuggestions.length > 0 && (
             <div className="mt-2 rounded-md border bg-card">
               <ul className="max-h-56 overflow-auto py-1">
                 {locationSuggestions.map((rvw) => (
