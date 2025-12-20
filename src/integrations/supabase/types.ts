@@ -66,7 +66,9 @@ export type Database = {
           field_options: Json | null
           field_tooltips: Json | null
           grondslag_artikel: string | null
-          grondslag_type: string | null
+          grondslag_type:
+            | Database["public"]["Enums"]["feitcodes_grondslag_type_enum"]
+            | null
           grondslag_url: string | null
           id: string
           image_url: string | null
@@ -86,7 +88,9 @@ export type Database = {
           field_options?: Json | null
           field_tooltips?: Json | null
           grondslag_artikel?: string | null
-          grondslag_type?: string | null
+          grondslag_type?:
+            | Database["public"]["Enums"]["feitcodes_grondslag_type_enum"]
+            | null
           grondslag_url?: string | null
           id?: string
           image_url?: string | null
@@ -106,7 +110,9 @@ export type Database = {
           field_options?: Json | null
           field_tooltips?: Json | null
           grondslag_artikel?: string | null
-          grondslag_type?: string | null
+          grondslag_type?:
+            | Database["public"]["Enums"]["feitcodes_grondslag_type_enum"]
+            | null
           grondslag_url?: string | null
           id?: string
           image_url?: string | null
@@ -167,6 +173,45 @@ export type Database = {
         }
         Relationships: []
       }
+      road_sign_feitcodes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          feitcode_id: string
+          id: string
+          road_sign_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          feitcode_id: string
+          id?: string
+          road_sign_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          feitcode_id?: string
+          id?: string
+          road_sign_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "road_sign_feitcodes_feitcode_id_fkey"
+            columns: ["feitcode_id"]
+            isOneToOne: false
+            referencedRelation: "feitcodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "road_sign_feitcodes_road_sign_id_fkey"
+            columns: ["road_sign_id"]
+            isOneToOne: false
+            referencedRelation: "road_signs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       road_signs: {
         Row: {
           category: string
@@ -179,6 +224,7 @@ export type Database = {
           image_url: string | null
           sign_code: string
           sign_name: string
+          sign_type: string | null
           updated_at: string | null
         }
         Insert: {
@@ -192,6 +238,7 @@ export type Database = {
           image_url?: string | null
           sign_code: string
           sign_name: string
+          sign_type?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -205,6 +252,7 @@ export type Database = {
           image_url?: string | null
           sign_code?: string
           sign_name?: string
+          sign_type?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -340,6 +388,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      feitcodes_grondslag_type_enum: "RVV 1990" | "APV" | "ASV"
       subscription_plan_enum: "pro"
       subscription_status_enum: "active" | "inactive" | "cancelled"
       user_role: "user" | "subscriber" | "moderator" | "administrator"
@@ -471,6 +520,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      feitcodes_grondslag_type_enum: ["RVV 1990", "APV", "ASV"],
       subscription_plan_enum: ["pro"],
       subscription_status_enum: ["active", "inactive", "cancelled"],
       user_role: ["user", "subscriber", "moderator", "administrator"],

@@ -296,7 +296,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
         field_tooltips,
         conditional_rules: conditionalRules,
         location_field: formData.location_field || null,
-        grondslag_type: formData.grondslag_type || null,
+        grondslag_type: (formData.grondslag_type || null) as "RVV 1990" | "APV" | "ASV" | null,
         grondslag_artikel: formData.grondslag_artikel || null,
         grondslag_url: formData.grondslag_url || null,
       };

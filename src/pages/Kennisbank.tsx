@@ -10,16 +10,34 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, SignpostBig } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, SignpostBig, FileText } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
+import { useNavigate } from "react-router-dom";
 
 export default function Kennisbank() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedType, setSelectedType] = useState<string>("all");
 
+  // Fetch available sign types from database
+  const { data: availableSignTypes } = useQuery({
+    queryKey: ["available-sign-types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("road_signs")
+        .select("sign_type")
+        .not("sign_type", "is", null);
+      if (error) throw error;
+      // Get unique sign types and sort them
+      const uniqueTypes = [...new Set(data.map(r => r.sign_type))].filter(Boolean).sort();
+      return uniqueTypes as string[];
+    },
+  });
+
+  // Fetch road signs with type filter
   const { data: roadSigns, isLoading } = useQuery({
-    queryKey: ["road-signs", searchTerm, selectedCategory],
+    queryKey: ["road-signs", searchTerm, selectedType],
     queryFn: async () => {
       let query = supabase.from("road_signs").select("*").order("sign_code");
 
@@ -29,8 +47,8 @@ export default function Kennisbank() {
         );
       }
 
-      if (selectedCategory !== "all") {
-        query = query.eq("category", selectedCategory);
+      if (selectedType !== "all") {
+        query = query.eq("sign_type", selectedType);
       }
 
       const { data, error } = await query;
@@ -39,14 +57,43 @@ export default function Kennisbank() {
     },
   });
 
-  const categories = [
-    { value: "all", label: "Alle" },
-    { value: "verbod", label: "Verbodsborden" },
-    { value: "gebod", label: "Gebodsborden" },
-    { value: "voorrang", label: "Voorrangsborden" },
-    { value: "waarschuwing", label: "Waarschuwingsborden" },
-    { value: "aanwijzing", label: "Aanwijzingsborden" },
-  ];
+  // Fetch linked feitcodes for all road signs
+  const { data: roadSignLinks } = useQuery({
+    queryKey: ['road-sign-feitcodes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('road_sign_feitcodes')
+        .select(`
+          id,
+          road_sign_id,
+          feitcode_id,
+          feitcodes (
+            id,
+            factcode,
+            description
+          )
+        `);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Get links for a specific road sign
+  const getLinksForSign = (signId: string) => {
+    return roadSignLinks?.filter(link => link.road_sign_id === signId) || [];
+  };
+
+  const handleFeitcodeClick = (feitcode: any) => {
+    navigate("/", {
+      state: {
+        prefill: {
+          factcode: feitcode.factcode,
+          form_values: feitcode.form_values,
+          location_value: feitcode.location_value,
+        },
+      },
+    });
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -69,15 +116,21 @@ export default function Kennisbank() {
           />
         </div>
 
-        <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-          <TabsList className="w-full flex-wrap h-auto">
-            {categories.map((cat) => (
-              <TabsTrigger key={cat.value} value={cat.value} className="flex-1">
-                {cat.label}
+        {/* Filter by sign type (A/B/C/D etc.) - only show types that exist */}
+        {availableSignTypes && availableSignTypes.length > 0 && (
+          <Tabs value={selectedType} onValueChange={setSelectedType}>
+            <TabsList className="w-full flex-wrap h-auto">
+              <TabsTrigger value="all" className="min-w-[40px]">
+                Alle
               </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+              {availableSignTypes.map((type) => (
+                <TabsTrigger key={type} value={type} className="min-w-[40px]">
+                  {type}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -99,43 +152,68 @@ export default function Kennisbank() {
             </CardContent>
           </Card>
         ) : (
-          roadSigns?.map((sign) => (
-            <Card
-              key={sign.id}
-              className="overflow-hidden transition-all hover:shadow-lg"
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg">{sign.sign_code}</CardTitle>
-                    <Badge variant="secondary">
-                      {sign.category
-                        .split("_")
-                        .map(
-                          (word) => word.charAt(0).toUpperCase() + word.slice(1)
-                        )
-                        .join(" ")}
-                    </Badge>
+          roadSigns?.map((sign) => {
+            const links = getLinksForSign(sign.id);
+            return (
+              <Card
+                key={sign.id}
+                className="overflow-hidden transition-all hover:shadow-lg"
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <CardTitle className="text-lg">{sign.sign_code}</CardTitle>
+                      <Badge variant="secondary">
+                        {sign.category
+                          .split("_")
+                          .map(
+                            (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
+                          )
+                          .join(" ")}
+                      </Badge>
+                    </div>
+                    {sign.image_url && (
+                      <img
+                        src={sign.image_url}
+                        alt={sign.sign_name}
+                        className="h-16 w-16 rounded-md object-contain"
+                      />
+                    )}
                   </div>
-                  {sign.image_url && (
-                    <img
-                      src={sign.image_url}
-                      alt={sign.sign_name}
-                      className="h-16 w-16 rounded-md object-contain"
-                    />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <h3 className="font-semibold">{sign.sign_name}</h3>
+                  {sign.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {sign.description}
+                    </p>
                   )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <h3 className="font-semibold mb-2">{sign.sign_name}</h3>
-                {sign.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {sign.description}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))
+                  
+                  {/* Show linked feitcodes */}
+                  {links.length > 0 && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        Gekoppelde feitcodes:
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {links.map((link: any) => (
+                          <Badge 
+                            key={link.id} 
+                            variant="outline"
+                            className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                            onClick={() => handleFeitcodeClick(link.feitcodes)}
+                          >
+                            {link.feitcodes?.factcode}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -12,13 +13,67 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Shield } from "lucide-react";
 import { TwoFactorDialog } from "@/components/TwoFactorDialog";
+import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
+import { z } from "zod";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Validation schemas
+const emailSchema = z
+  .string()
+  .trim()
+  .min(1, "E-mailadres is verplicht")
+  .email("Ongeldig e-mailadres")
+  .max(255, "E-mailadres mag maximaal 255 karakters zijn")
+  .refine(
+    (email) => email.toLowerCase().endsWith("@amsterdam.nl"),
+    "Alleen @amsterdam.nl e-mailadressen zijn toegestaan"
+  );
+
+const passwordSchema = z
+  .string()
+  .min(8, "Wachtwoord moet minimaal 8 karakters zijn")
+  .max(128, "Wachtwoord mag maximaal 128 karakters zijn")
+  .refine(
+    (password) => /[A-Z]/.test(password),
+    "Wachtwoord moet minimaal één hoofdletter bevatten"
+  )
+  .refine(
+    (password) => /[a-z]/.test(password),
+    "Wachtwoord moet minimaal één kleine letter bevatten"
+  )
+  .refine(
+    (password) => /[0-9]/.test(password),
+    "Wachtwoord moet minimaal één cijfer bevatten"
+  );
+
+const fullNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Naam is verplicht")
+  .max(100, "Naam mag maximaal 100 karakters zijn")
+  .refine(
+    (name) => /^[a-zA-ZÀ-ÿ\s\-'.]+$/.test(name),
+    "Naam bevat ongeldige karakters"
+  );
+
+const signInSchema = z.object({
+  email: z.string().trim().min(1, "E-mailadres is verplicht").email("Ongeldig e-mailadres"),
+  password: z.string().min(1, "Wachtwoord is verplicht"),
+});
+
+const signUpSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+  fullName: fullNameSchema,
+});
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [checkingSession, setCheckingSession] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,23 +82,46 @@ export default function Auth() {
   const [mfaFactorId, setMfaFactorId] = useState("");
   const [mfaChallengeId, setMfaChallengeId] = useState("");
   const [mfaUserId, setMfaUserId] = useState("");
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState("signin");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/");
+      } else {
+        setCheckingSession(false);
       }
     });
   }, [navigate]);
 
+  const clearValidationErrors = () => {
+    setValidationErrors({});
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearValidationErrors();
+    
+    // Validate input
+    const result = signInSchema.safeParse({ email, password });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          errors[err.path[0] as string] = err.message;
+        }
+      });
+      setValidationErrors(errors);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: result.data.email,
+        password: result.data.password,
       });
 
       if (error) throw error;
@@ -144,15 +222,30 @@ export default function Auth() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearValidationErrors();
+    
+    // Validate input
+    const result = signUpSchema.safeParse({ email, password, fullName });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          errors[err.path[0] as string] = err.message;
+        }
+      });
+      setValidationErrors(errors);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: result.data.email,
+        password: result.data.password,
         options: {
           data: {
-            full_name: fullName,
+            full_name: result.data.fullName,
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -175,6 +268,40 @@ export default function Auth() {
     }
   };
 
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-3 text-center">
+            <Skeleton className="mx-auto h-16 w-16 rounded-full" />
+            <Skeleton className="mx-auto h-7 w-48" />
+            <Skeleton className="mx-auto h-5 w-64" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Skeleton className="mx-auto h-4 w-72" />
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <>
       <TwoFactorDialog
@@ -195,83 +322,148 @@ export default function Auth() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); clearValidationErrors(); }} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Inloggen</TabsTrigger>
                 <TabsTrigger value="signup">Registreren</TabsTrigger>
               </TabsList>
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">E-mailadres</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="naam@voorbeeld.nl"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Wachtwoord</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Bezig met inloggen..." : "Inloggen"}
-                  </Button>
-                </form>
-              </TabsContent>
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Volledige naam</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="Jan Jansen"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">E-mailadres</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="naam@voorbeeld.nl"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Wachtwoord</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Bezig met registreren..." : "Registreren"}
-                  </Button>
-                </form>
-              </TabsContent>
+              <div className="relative mt-4 overflow-hidden">
+                <AnimatePresence mode="wait" initial={false}>
+                  {activeTab === "signin" && (
+                    <motion.div
+                      key="signin"
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: 20, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                    >
+                      <form onSubmit={handleSignIn} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="signin-email">E-mailadres</Label>
+                          <Input
+                            id="signin-email"
+                            type="email"
+                            placeholder="naam@amsterdam.nl"
+                            value={email}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              if (validationErrors.email) {
+                                setValidationErrors((prev) => ({ ...prev, email: "" }));
+                              }
+                            }}
+                            maxLength={255}
+                            aria-invalid={!!validationErrors.email}
+                          />
+                          {validationErrors.email && (
+                            <p className="text-sm text-destructive">{validationErrors.email}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="signin-password">Wachtwoord</Label>
+                          <Input
+                            id="signin-password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => {
+                              setPassword(e.target.value);
+                              if (validationErrors.password) {
+                                setValidationErrors((prev) => ({ ...prev, password: "" }));
+                              }
+                            }}
+                            maxLength={128}
+                            aria-invalid={!!validationErrors.password}
+                          />
+                          {validationErrors.password && (
+                            <p className="text-sm text-destructive">{validationErrors.password}</p>
+                          )}
+                        </div>
+                        <Button type="submit" className="w-full" disabled={loading}>
+                          {loading ? "Bezig met inloggen..." : "Inloggen"}
+                        </Button>
+                      </form>
+                    </motion.div>
+                  )}
+                  {activeTab === "signup" && (
+                    <motion.div
+                      key="signup"
+                      initial={{ x: 20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: -20, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                    >
+                      <form onSubmit={handleSignUp} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="signup-name">Volledige naam</Label>
+                          <Input
+                            id="signup-name"
+                            type="text"
+                            placeholder="Jan Jansen"
+                            value={fullName}
+                            onChange={(e) => {
+                              setFullName(e.target.value);
+                              if (validationErrors.fullName) {
+                                setValidationErrors((prev) => ({ ...prev, fullName: "" }));
+                              }
+                            }}
+                            maxLength={100}
+                            aria-invalid={!!validationErrors.fullName}
+                          />
+                          {validationErrors.fullName && (
+                            <p className="text-sm text-destructive">{validationErrors.fullName}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="signup-email">E-mailadres</Label>
+                          <Input
+                            id="signup-email"
+                            type="email"
+                            placeholder="naam@amsterdam.nl"
+                            value={email}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              if (validationErrors.email) {
+                                setValidationErrors((prev) => ({ ...prev, email: "" }));
+                              }
+                            }}
+                            maxLength={255}
+                            aria-invalid={!!validationErrors.email}
+                          />
+                          {validationErrors.email && (
+                            <p className="text-sm text-destructive">{validationErrors.email}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="signup-password">Wachtwoord</Label>
+                          <Input
+                            id="signup-password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => {
+                              setPassword(e.target.value);
+                              if (validationErrors.password) {
+                                setValidationErrors((prev) => ({ ...prev, password: "" }));
+                              }
+                            }}
+                            maxLength={128}
+                            aria-invalid={!!validationErrors.password}
+                          />
+                          {validationErrors.password && (
+                            <p className="text-sm text-destructive">{validationErrors.password}</p>
+                          )}
+                          <PasswordStrengthIndicator password={password} />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={loading}>
+                          {loading ? "Bezig met registreren..." : "Registreren"}
+                        </Button>
+                      </form>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </Tabs>
           </CardContent>
           <CardFooter className="text-center text-sm text-muted-foreground">
-            Alleen voor geautoriseerd personeel
+            Alleen voor geautoriseerd personeel van de Gemeente Amsterdam.
           </CardFooter>
         </Card>
       </div>
