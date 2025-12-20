@@ -14,6 +14,7 @@ import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Favorites from "./pages/Favorites";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,16 @@ function AnimatedRoutes() {
             <ProtectedRoute>
               <PageTransition>
                 <SavedRvws />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/favorieten"
+          element={
+            <ProtectedRoute>
+              <PageTransition>
+                <Favorites />
               </PageTransition>
             </ProtectedRoute>
           }

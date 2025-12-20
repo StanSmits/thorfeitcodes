@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,18 +23,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search as SearchIcon, FileText, Plus } from "lucide-react";
+import { Search as SearchIcon, FileText, Plus, X, Clock, Star } from "lucide-react";
 import { RVWGenerator } from "@/components/RVWGenerator";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
+import { useFavorites } from "@/hooks/useFavorites";
 
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFactcode, setSelectedFactcode] = useState<any>(null);
   const [initialFormValues, setInitialFormValues] = useState<Record<string,string> | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"popular" | "newest" | "all">("popular");
+  const [showHistory, setShowHistory] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const { history, addToHistory, removeFromHistory } = useSearchHistory();
+  const { toggleFavorite, isFavorite } = useFavorites();
 
   // If navigated here with a prefill (from SavedRvws), load that factcode and form values
   useEffect(() => {
@@ -66,10 +72,20 @@ export default function Search() {
 
     loadPrefill();
   }, [location?.state]);
+  
   const [suggestDialogOpen, setSuggestDialogOpen] = useState(false);
   const [suggestedCode, setSuggestedCode] = useState("");
   const [suggestedDescription, setSuggestedDescription] = useState("");
   const queryClient = useQueryClient();
+
+  // Add to search history when user stops typing
+  useEffect(() => {
+    if (!searchTerm.trim()) return;
+    const timer = setTimeout(() => {
+      addToHistory(searchTerm.trim());
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchTerm, addToHistory]);
 
   const { data: feitcodes, isLoading } = useQuery({
     queryKey: ["feitcodes", searchTerm, viewMode],
@@ -143,11 +159,56 @@ export default function Search() {
           <div className="relative">
             <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               placeholder="Zoek op feitcode of omschrijving..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => setShowHistory(true)}
+              onBlur={() => setTimeout(() => setShowHistory(false), 200)}
               className="pl-10"
             />
+            
+            {/* Search History Dropdown */}
+            <AnimatePresence>
+              {showHistory && history.length > 0 && !searchTerm && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border bg-card shadow-lg"
+                >
+                  <div className="p-2">
+                    <p className="px-2 py-1 text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Recente zoekopdrachten
+                    </p>
+                    {history.map((term) => (
+                      <div
+                        key={term}
+                        className="flex items-center justify-between rounded px-2 py-1.5 hover:bg-accent cursor-pointer"
+                        onClick={() => {
+                          setSearchTerm(term);
+                          setShowHistory(false);
+                        }}
+                      >
+                        <span className="text-sm">{term}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromHistory(term);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {searchTerm ? (
@@ -277,30 +338,41 @@ export default function Search() {
                     transition={{ delay: index * 0.05, duration: 0.3 }}
                   >
                     <Card
-                    key={code.id}
-                    className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300"
-                    onClick={() => {
-                      setSelectedFactcode(code);
-                      if (typeof window !== 'undefined') {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }
-                    }}
-                  >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{code.factcode}</CardTitle>
-                    </div>
-                    <CardDescription className="line-clamp-2">
-                      {code.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <FileText className="h-4 w-4" />
-                      <span>Klik om RVW te genereren</span>
-                    </div>
-                    </CardContent>
-                  </Card>
+                      className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300 relative"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(code.id);
+                        }}
+                      >
+                        <Star className={`h-4 w-4 ${isFavorite(code.id) ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                      </Button>
+                      <div
+                        onClick={() => {
+                          setSelectedFactcode(code);
+                          if (typeof window !== 'undefined') {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }}
+                      >
+                        <CardHeader>
+                          <CardTitle className="text-lg pr-8">{code.factcode}</CardTitle>
+                          <CardDescription className="line-clamp-2">
+                            {code.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <FileText className="h-4 w-4" />
+                            <span>Klik om RVW te genereren</span>
+                          </div>
+                        </CardContent>
+                      </div>
+                    </Card>
                   </motion.div>
                 ))
               )}
