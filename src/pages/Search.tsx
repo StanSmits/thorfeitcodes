@@ -1,5 +1,5 @@
-import { useLocation } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useCallback } from 'react';
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,8 +39,18 @@ export default function Search() {
   const [showHistory, setShowHistory] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const { history, addToHistory, removeFromHistory } = useSearchHistory();
   const { toggleFavorite, isFavorite } = useFavorites();
+
+  // Listen for global Ctrl+K focus event
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      searchInputRef.current?.focus();
+    };
+    window.addEventListener('focus-search', handleFocusSearch);
+    return () => window.removeEventListener('focus-search', handleFocusSearch);
+  }, []);
 
   // If navigated here with a prefill (from SavedRvws), load that factcode and form values
   useEffect(() => {
@@ -116,6 +126,37 @@ export default function Search() {
     },
   });
 
+  // Keyboard shortcuts: Escape to go back, Enter to select first result
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Escape: Go back (either from selected factcode or navigate back)
+      if (event.key === 'Escape') {
+        const isInDialog = document.activeElement?.closest('[role="dialog"]');
+        if (isInDialog) return;
+        
+        if (selectedFactcode) {
+          setSelectedFactcode(null);
+          setInitialFormValues(undefined);
+        } else if (window.history.length > 1) {
+          navigate(-1);
+        }
+      }
+
+      // Enter: Select first result (when search input is focused and results exist)
+      if (event.key === 'Enter') {
+        const isSearchFocused = document.activeElement === searchInputRef.current;
+        if (isSearchFocused && feitcodes && feitcodes.length > 0 && !selectedFactcode) {
+          event.preventDefault();
+          setSelectedFactcode(feitcodes[0]);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedFactcode, navigate, feitcodes]);
+
   const suggestMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("factcode_suggestions").insert({
@@ -185,7 +226,7 @@ export default function Search() {
                     {history.map((term) => (
                       <div
                         key={term}
-                        className="flex items-center justify-between rounded px-2 py-1.5 hover:bg-accent cursor-pointer"
+                        className="flex items-center justify-between rounded px-2 py-1.5 hover:bg-muted cursor-pointer transition-colors"
                         onClick={() => {
                           setSearchTerm(term);
                           setShowHistory(false);
@@ -349,7 +390,7 @@ export default function Search() {
                           toggleFavorite(code.id);
                         }}
                       >
-                        <Star className={`h-4 w-4 ${isFavorite(code.id) ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                        <Star className={`h-4 w-4 ${isFavorite(code.id) ? 'fill-favorite text-favorite' : 'text-muted-foreground'}`} />
                       </Button>
                       <div
                         onClick={() => {

@@ -69,12 +69,12 @@ export function UserProfileDropdown() {
                 const role = getUserRole();
                 const classes =
                   role === "Beheerder"
-                    ? "bg-red-600 text-white"
+                    ? "bg-destructive text-destructive-foreground"
                     : role === "Moderator"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-200 text-black";
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground";
                 return (
-                  <div className={`p-2 text-sm ${classes} rounded-md w-fit`}>
+                  <div className={`px-2 py-1 text-xs font-medium ${classes} rounded-md w-fit`}>
                     {role}
                   </div>
                 );

@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -8,7 +9,49 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      includeAssets: ['favicon.svg', 'favicon.ico', 'robots.txt'],
+      manifest: {
+        name: 'Feitcodes RVW Generator',
+        short_name: 'RVW Generator',
+        description: 'Genereer RvW teksten op basis van feitcodes',
+        theme_color: '#1a1a2e',
+        background_color: '#0f0f1a',
+        display: 'standalone',
+        scope: '/',
+        start_url: '/',
+        icons: [
+          {
+            src: '/favicon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/feitcodes/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'feitcodes-api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
+      }
+    })
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

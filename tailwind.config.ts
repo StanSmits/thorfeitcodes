@@ -57,6 +57,10 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        favorite: {
+          DEFAULT: "hsl(var(--favorite))",
+          foreground: "hsl(var(--favorite-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -17,7 +17,7 @@ export function MobileBottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 lg:hidden">
-      <div className="flex items-center justify-around py-2">
+      <div className="flex items-center justify-evenly py-2 px-1">
         {navigation.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.href;
@@ -26,14 +26,14 @@ export function MobileBottomNav() {
               key={item.name}
               to={item.href}
               className={cn(
-                'flex flex-col items-center gap-1 px-3 py-1 text-xs transition-colors',
+                'flex flex-col items-center gap-1 py-1 px-2 min-w-0 flex-1 max-w-[72px] text-xs transition-colors rounded-md',
                 isActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'text-primary bg-muted'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               )}
             >
-              <Icon className={cn('h-5 w-5', isActive && 'text-primary')} />
-              <span className="truncate">{item.name}</span>
+              <Icon className={cn('h-5 w-5 shrink-0', isActive && 'text-primary')} />
+              <span className="truncate text-center w-full text-[10px]">{item.name}</span>
             </Link>
           );
         })}

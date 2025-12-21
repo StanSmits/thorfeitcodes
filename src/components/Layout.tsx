@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Shield, Search, Book, FileText, Settings, Star } from 'lucide-react';
 import { UserProfileDropdown } from '@/components/UserProfileDropdown';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { useGlobalKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface LayoutProps {
   children: ReactNode;
@@ -13,6 +14,9 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const { user, isModerator } = useAuth();
   const location = useLocation();
+  
+  // Enable global Ctrl+K shortcut
+  useGlobalKeyboardShortcuts();
 
   const navigation = [
     { name: 'Zoeken', href: '/', icon: Search },

@@ -82,7 +82,7 @@ export default function Favorites() {
                         toggleFavorite(code.id);
                       }}
                     >
-                      <Star className="h-4 w-4 fill-primary text-primary" />
+                      <Star className="h-4 w-4 fill-favorite text-favorite" />
                     </Button>
                     <div onClick={() => setSelectedFactcode(code)}>
                       <CardHeader>
