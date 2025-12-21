@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'favicon.ico', 'robots.txt'],
       manifest: {
         name: 'Feitcodes RVW Generator',
