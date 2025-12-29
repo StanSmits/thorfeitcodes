@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Shield, Search, Book, FileText, Settings, Star } from 'lucide-react';
 import { UserProfileDropdown } from '@/components/UserProfileDropdown';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { useGlobalKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
@@ -66,7 +67,10 @@ export function Layout({ children }: LayoutProps) {
             })}
           </nav>
 
-          <UserProfileDropdown />
+          <div className="flex items-center gap-2">
+            <ThemeSwitcher />
+            <UserProfileDropdown />
+          </div>
         </div>
       </header>
 

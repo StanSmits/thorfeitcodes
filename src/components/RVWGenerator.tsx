@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -199,12 +199,12 @@ export function RVWGenerator({
     fetchRecentRvws();
   }, [factcode.factcode, factcode.location_field]);
 
-  const fieldOptions = factcode.field_options || {};
-  const fieldTooltips = factcode.field_tooltips || {};
-  const conditionalRules = factcode.conditional_rules || {};
+  const fieldOptions = useMemo(() => factcode.field_options || {}, [factcode.field_options]);
+  const fieldTooltips = useMemo(() => factcode.field_tooltips || {}, [factcode.field_tooltips]);
+  const conditionalRules = useMemo(() => factcode.conditional_rules || {}, [factcode.conditional_rules]);
 
   // Check if a field is visible based on conditional rules
-  const isFieldVisible = (fieldName: string): boolean => {
+  const isFieldVisible = useCallback((fieldName: string): boolean => {
     const rule = conditionalRules[fieldName];
     if (!rule) return true; // No rule means always visible
 
@@ -230,12 +230,7 @@ export function RVWGenerator({
       default:
         return true;
     }
-  };
-
-  // Get all visible fields
-  const visibleFields = useMemo(() => {
-    return Object.keys(fieldOptions).filter((field) => isFieldVisible(field));
-  }, [fieldOptions, formValues, conditionalRules]);
+  }, [conditionalRules, formValues]);
 
   // Extract field names from template in order of appearance
   const orderedFields = useMemo(() => {
@@ -256,7 +251,7 @@ export function RVWGenerator({
   // Get visible ordered fields (for form rendering)
   const visibleOrderedFields = useMemo(() => {
     return orderedFields.filter((field) => isFieldVisible(field));
-  }, [orderedFields, formValues, conditionalRules]);
+  }, [orderedFields, isFieldVisible]);
 
   // Auto-generate text as form values change, handling hidden fields
   const generatedText = useMemo(() => {
@@ -293,7 +288,7 @@ export function RVWGenerator({
     result = result.replace(/\n\s*\n\s*\n/g, "\n\n").trim();
 
     return result;
-  }, [formValues, factcode.template, orderedFields, conditionalRules]);
+  }, [formValues, factcode.template, orderedFields, isFieldVisible]);
 
   const reasonPrefix = useMemo(() => {
     if (isStopped) {
@@ -335,8 +330,8 @@ export function RVWGenerator({
   }, [initialFormValues]);
 
   const handleCopy = async () => {
-    // Copy the clean version without highlighting
-    const cleanText = fullGeneratedText.replace(/\{[^}]+\}/g, (match) => match);
+    // Copy the text as-is (placeholders will remain if fields are unfilled)
+    const cleanText = fullGeneratedText;
     navigator.clipboard.writeText(cleanText);
     setCopied(true);
     toast({
