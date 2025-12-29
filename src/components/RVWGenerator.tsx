@@ -966,19 +966,21 @@ export function RVWGenerator({
 
       {/* Mobile floating copy button (bottom-right) */}
       <div className="md:hidden">
-        <div className="fixed z-50 bottom-4 right-4">
+        {/* Place the button above the mobile bottom nav and safe areas */}
+        <div className="fixed z-[100] right-4 pointer-events-none bottom-[calc(env(safe-area-inset-bottom)+5rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+4rem)]">
           <Button
             onClick={handleCopy}
             disabled={!fullGeneratedText}
             size="icon"
             variant="secondary"
             aria-label="Kopieer RVW"
-            className="shadow-lg"
+            className="shadow-lg pointer-events-auto"
+            title="Kopieer RVW"
           >
             {copied ? (
-              <Check className="h-4 w-4" />
+              <Check className="h-5 w-5" />
             ) : (
-              <Copy className="h-4 w-4" />
+              <Copy className="h-5 w-5" />
             )}
           </Button>
         </div>
