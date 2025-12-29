@@ -330,8 +330,8 @@ export function RVWGenerator({
   }, [initialFormValues]);
 
   const handleCopy = async () => {
-    // Copy the clean version without highlighting
-    const cleanText = fullGeneratedText.replace(/\{[^}]+\}/g, (match) => match);
+    // Copy the text as-is (placeholders will remain if fields are unfilled)
+    const cleanText = fullGeneratedText;
     navigator.clipboard.writeText(cleanText);
     setCopied(true);
     toast({
