@@ -95,6 +95,97 @@ All colors MUST be HSL.
     --sidebar-border: 215 25% 15%;
     --sidebar-ring: 217 92% 48%;
   }
+
+  .amsterdam {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 0 100% 46%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 205 100% 29%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 50%;
+
+    --accent: 0 100% 46%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 100% 46%;
+
+    /* Favorite star color - golden/amber */
+    --favorite: 45 93% 47%;
+    --favorite-foreground: 45 93% 47%;
+
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 100% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 205 100% 29%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 0 100% 46%;
+
+    /* Amsterdam city colors */
+    --amsterdam-red: 0 100% 46%;
+    --amsterdam-red-dark: 0 100% 40%;
+    --amsterdam-blue: 205 100% 29%;
+  }
+
+  .custom {
+    --background: 280 40% 96%;
+    --foreground: 280 50% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 280 50% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 280 50% 10%;
+
+    --primary: 280 70% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 280 30% 90%;
+    --secondary-foreground: 280 50% 10%;
+
+    --muted: 280 30% 95%;
+    --muted-foreground: 280 20% 45%;
+
+    --accent: 320 80% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 280 30% 88%;
+    --input: 280 30% 88%;
+    --ring: 280 70% 50%;
+
+    /* Favorite star color - golden/amber */
+    --favorite: 45 93% 47%;
+    --favorite-foreground: 45 93% 47%;
+
+    --sidebar-background: 280 50% 10%;
+    --sidebar-foreground: 280 40% 98%;
+    --sidebar-primary: 280 70% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 280 30% 25%;
+    --sidebar-accent-foreground: 280 40% 98%;
+    --sidebar-border: 280 30% 20%;
+    --sidebar-ring: 320 80% 55%;
+  }
 }
 
 @layer base {
