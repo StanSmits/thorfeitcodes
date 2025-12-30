@@ -52,6 +52,10 @@ export function RVWGenerator({
   }>(null);
   // Recent RvWs for the current location
   const [recentRvws, setRecentRvws] = useState<any[]>([]);
+  // Location search/autocomplete state
+  const [locationSearchOpen, setLocationSearchOpen] = useState(false);
+  const [locationSearchQuery, setLocationSearchQuery] = useState("");
+  const locationDropdownRef = useRef<HTMLDivElement>(null);
 
   const currentPrefill = useMemo(() => {
     return initialFormValues ?? formValues;
@@ -157,46 +161,42 @@ export function RVWGenerator({
     // We only want to re-run when the field options object identity changes
   }, [factcode.field_options]);
 
-  // Fetch recent RvWs when component loads or location value changes
-  useEffect(() => {
+  // Lazy load recent RvWs only when needed
+  const fetchRecentRvws = useCallback(async () => {
     const locationField = factcode.location_field;
     if (!locationField) {
       setRecentRvws([]);
       return;
     }
 
-    const fetchRecentRvws = async () => {
-      try {
-        // Fetch all recent RvWs for this factcode, grouped by location
-        const { data, error } = await supabase
-          .from("saved_rvws")
-          .select("*")
-          .eq("factcode", factcode.factcode)
-          .order("created_at", { ascending: false })
-          .limit(50); // Get more to find unique locations
+    try {
+      // Fetch all recent RvWs for this factcode, grouped by location
+      const { data, error } = await supabase
+        .from("saved_rvws")
+        .select("*")
+        .eq("factcode", factcode.factcode)
+        .order("created_at", { ascending: false })
+        .limit(50); // Get more to find unique locations
 
-        if (error) {
-          console.error("Failed to fetch recent RvWs", error);
-          return;
-        }
-
-        // Group by location and keep only the 3 most recent unique locations
-        const locationMap = new Map();
-        (data || []).forEach((rvw: any) => {
-          if (!locationMap.has(rvw.location_value)) {
-            locationMap.set(rvw.location_value, rvw);
-          }
-        });
-
-        // Get first 3 unique locations
-        const uniqueLocations = Array.from(locationMap.values()).slice(0, 3);
-        setRecentRvws(uniqueLocations);
-      } catch (err) {
-        console.error("Error fetching recent RvWs", err);
+      if (error) {
+        console.error("Failed to fetch recent RvWs", error);
+        return;
       }
-    };
 
-    fetchRecentRvws();
+      // Group by location and keep only the 3 most recent unique locations
+      const locationMap = new Map();
+      (data || []).forEach((rvw: any) => {
+        if (!locationMap.has(rvw.location_value)) {
+          locationMap.set(rvw.location_value, rvw);
+        }
+      });
+
+      // Get first 3 unique locations
+      const uniqueLocations = Array.from(locationMap.values()).slice(0, 3);
+      setRecentRvws(uniqueLocations);
+    } catch (err) {
+      console.error("Error fetching recent RvWs", err);
+    }
   }, [factcode.factcode, factcode.location_field]);
 
   const fieldOptions = useMemo(() => factcode.field_options || {}, [factcode.field_options]);
@@ -249,9 +249,21 @@ export function RVWGenerator({
   }, [factcode.template]);
 
   // Get visible ordered fields (for form rendering)
+  // Ensure location field is always first if present
   const visibleOrderedFields = useMemo(() => {
-    return orderedFields.filter((field) => isFieldVisible(field));
-  }, [orderedFields, isFieldVisible]);
+    const filtered = orderedFields.filter((field) => isFieldVisible(field));
+    const locationField = factcode.location_field;
+    
+    if (locationField && filtered.includes(locationField)) {
+      // Move location field to the front
+      return [
+        locationField,
+        ...filtered.filter((field) => field !== locationField)
+      ];
+    }
+    
+    return filtered;
+  }, [orderedFields, isFieldVisible, factcode.location_field]);
 
   // Auto-generate text as form values change, handling hidden fields
   const generatedText = useMemo(() => {
@@ -328,6 +340,25 @@ export function RVWGenerator({
       setFormValues(initialFormValues);
     }
   }, [initialFormValues]);
+
+  // Close location dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        locationDropdownRef.current &&
+        !locationDropdownRef.current.contains(event.target as Node)
+      ) {
+        setLocationSearchOpen(false);
+      }
+    };
+
+    if (locationSearchOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [locationSearchOpen]);
 
   const handleCopy = async () => {
     // Copy the text as-is (placeholders will remain if fields are unfilled)
@@ -479,7 +510,91 @@ export function RVWGenerator({
     setPreview(null);
   };
 
+  const renderLocationField = (fieldName: string) => {
+    const label = fieldTooltips[fieldName] || fieldName;
+    const currentValue = formValues[fieldName] || "";
+
+    const handleLocationFocus = () => {
+      // Fetch RvWs only when user interacts with the field
+      if (recentRvws.length === 0) {
+        fetchRecentRvws();
+      }
+      setLocationSearchOpen(currentValue.length > 0 || locationSuggestions.length > 0);
+    };
+
+    return (
+      <div key={fieldName} className="space-y-2">
+        <Label htmlFor={fieldName}>{label}</Label>
+        <div ref={locationDropdownRef}>
+          <Input
+            id={fieldName}
+            value={currentValue}
+            onChange={(e) => {
+              const value = e.target.value;
+              updateFormValue(fieldName, value);
+              setLocationSearchQuery(value);
+              setLocationSearchOpen(value.length > 0);
+              // Fetch on first interaction if not already fetched
+              if (recentRvws.length === 0) {
+                fetchRecentRvws();
+              }
+            }}
+            onFocus={handleLocationFocus}
+            placeholder={`Voer ${label.toLowerCase()} in`}
+            autoComplete="off"
+          />
+          
+          {/* Autocomplete dropdown - pushes content down instead of overlaying */}
+          {locationSearchOpen && locationSuggestions.length > 0 && (
+            <div className="mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+              <div className="p-1">
+                <div className="text-xs text-muted-foreground mb-1 px-2 py-1">
+                  Recente locaties
+                </div>
+                {locationSuggestions.map((rvw) => (
+                  <button
+                    key={rvw.id}
+                    type="button"
+                    onClick={() => {
+                      loadRecentRvw(rvw);
+                      setLocationSearchOpen(false);
+                      setLocationSearchQuery("");
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-accent rounded-md transition-colors group"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm group-hover:text-accent-foreground truncate">
+                          {rvw.location_value}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(rvw.created_at).toLocaleString("nl-NL", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderField = (fieldName: string, options: any) => {
+    // Check if this is the location field
+    if (fieldName === factcode.location_field) {
+      return renderLocationField(fieldName);
+    }
+
     const label = fieldTooltips[fieldName] || fieldName;
 
     if (Array.isArray(options)) {
@@ -682,6 +797,16 @@ export function RVWGenerator({
     });
   }, [recentRvws, currentPrefill, fullGeneratedText]);
 
+  // Filtered suggestions for location autocomplete
+  const locationSuggestions = useMemo(() => {
+    const query = locationSearchQuery.toLowerCase().trim();
+    if (!query) return filteredRecentRvws;
+    
+    return filteredRecentRvws.filter((rvw) => {
+      return rvw.location_value?.toLowerCase().includes(query);
+    });
+  }, [filteredRecentRvws, locationSearchQuery]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -731,39 +856,6 @@ export function RVWGenerator({
           )}
         </div>
       </div>
-
-      {/* Recent RvWs Banner */}
-      {filteredRecentRvws.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Recente RvW's:</p>
-          {filteredRecentRvws.map((rvw) => (
-            <Card
-              key={rvw.id}
-              className="cursor-pointer bg-muted/25 hover:bg-muted/70 transition-colors"
-              onClick={() => loadRecentRvw(rvw)}
-            >
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="font-medium">
-                    Gebruik RvW voor: {rvw.location_value}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Laatst gebruikt op:{" "}
-                    {new Date(rvw.created_at).toLocaleString("nl-NL", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
