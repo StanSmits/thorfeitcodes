@@ -56,14 +56,7 @@ export function SubscriptionPlans({
       const product =
         plan === "monthly" ? STRIPE_PRODUCTS.MONTHLY : STRIPE_PRODUCTS.YEARLY;
 
-      // For demo purposes, we'll use a test price ID
-      // In production, you need to create actual Stripe products and prices
-      const priceId =
-        plan === "monthly"
-          ? import.meta.env.VITE_STRIPE_MONTHLY_PRICE_ID || "price_test_monthly"
-          : import.meta.env.VITE_STRIPE_YEARLY_PRICE_ID || "price_test_yearly";
-
-      const sessionId = await createCheckoutSession(priceId, userId, email);
+      const sessionId = await createCheckoutSession(product.id, userId, email);
       await redirectToCheckout(sessionId);
       onSubscriptionComplete?.();
     } catch (error) {

@@ -1,6 +1,6 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 
-const RATE_LIMIT_KEY = 'rate_limit:';
+const RATE_LIMIT_KEY = "rate_limit:";
 const FACT_CODES_PER_DAY = 5;
 
 interface RateLimitData {
@@ -16,15 +16,15 @@ function getStoredRateLimit(key: string): RateLimitData | null {
   try {
     const stored = localStorage.getItem(key);
     if (!stored) return null;
-    
+
     const data = JSON.parse(stored) as RateLimitData;
     const now = Date.now();
-    
+
     if (data.resetAt < now) {
       localStorage.removeItem(key);
       return null;
     }
-    
+
     return data;
   } catch {
     return null;
@@ -32,11 +32,7 @@ function getStoredRateLimit(key: string): RateLimitData | null {
 }
 
 function setRateLimit(key: string, count: number, resetAt: number): void {
-  try {
-    localStorage.setItem(key, JSON.stringify({ count, resetAt }));
-  } catch {
-    
-  }
+  localStorage.setItem(key, JSON.stringify({ count, resetAt }));
 }
 
 export async function checkFactCodeRateLimit(userId: string): Promise<{
@@ -44,7 +40,7 @@ export async function checkFactCodeRateLimit(userId: string): Promise<{
   remaining: number;
   resetAt: number;
 }> {
-  const key = getRateLimitKey(userId, 'fact_codes');
+  const key = getRateLimitKey(userId, "fact_codes");
   const now = Date.now();
   let data = getStoredRateLimit(key);
 
@@ -74,7 +70,7 @@ export function getRateLimitStatus(userId: string): {
   resetAt: number;
   isLimited: boolean;
 } {
-  const key = getRateLimitKey(userId, 'fact_codes');
+  const key = getRateLimitKey(userId, "fact_codes");
   const data = getStoredRateLimit(key);
 
   if (!data) {
@@ -96,6 +92,6 @@ export function getRateLimitStatus(userId: string): {
 }
 
 export function clearRateLimitCache(userId: string): void {
-  const key = getRateLimitKey(userId, 'fact_codes');
+  const key = getRateLimitKey(userId, "fact_codes");
   localStorage.removeItem(key);
 }

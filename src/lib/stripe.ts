@@ -6,16 +6,16 @@ export const getStripe = () => stripePromise;
 
 export const STRIPE_PRODUCTS = {
   MONTHLY: {
-    id: "monthly-subscription",
+    id: import.meta.env.VITE_STRIPE_MONTHLY_PRICE_ID || "price_test_monthly",
     name: "Monthly Plan",
-    price: 0.99,
+    price: 4.99,
     currency: "eur",
     interval: "month",
   },
   YEARLY: {
-    id: "yearly-subscription",
+    id: import.meta.env.VITE_STRIPE_YEARLY_PRICE_ID || "price_test_yearly",
     name: "Annual Plan",
-    price: 9.99,
+    price: 49.99,
     currency: "eur",
     interval: "year",
   },

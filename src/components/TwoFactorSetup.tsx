@@ -1,53 +1,65 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { toast } from '@/hooks/use-toast';
-import { Shield, Smartphone, Copy, Check, QrCode, Type, ArrowRight } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
+import {
+  Shield,
+  Smartphone,
+  Copy,
+  Check,
+  QrCode,
+  Type,
+  ArrowRight,
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function TwoFactorSetup() {
   const [isEnabled, setIsEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
-  const [qrCode, setQrCode] = useState('');
-  const [secret, setSecret] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [factorId, setFactorId] = useState('');
+  const [qrCode, setQrCode] = useState("");
+  const [secret, setSecret] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [factorId, setFactorId] = useState("");
   // challengeId is not required for enroll verification; Supabase verify for enroll uses factorId + code
   const [copied, setCopied] = useState(false);
-  const [setupStep, setSetupStep] = useState<'scan' | 'verify' | 'backup'>('scan');
+  const [setupStep, setSetupStep] = useState<"scan" | "verify" | "backup">(
+    "scan"
+  );
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [showDisableVerify, setShowDisableVerify] = useState(false);
-  const [disableVerificationCode, setDisableVerificationCode] = useState('');
-  const [disableFactorId, setDisableFactorId] = useState('');
-  const [disableChallengeId, setDisableChallengeId] = useState('');
+  const [disableVerificationCode, setDisableVerificationCode] = useState("");
+  const [disableFactorId, setDisableFactorId] = useState("");
+  const [disableChallengeId, setDisableChallengeId] = useState("");
   const [disableLoading, setDisableLoading] = useState(false);
   const { user } = useAuth();
 
   // Helper to compute SHA-256 hex digest of a string
   const sha256Hex = async (message: string) => {
     const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const hashHex = hashArray
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
     return hashHex;
   };
 
@@ -56,15 +68,13 @@ export function TwoFactorSetup() {
   }, []);
 
   const checkMfaStatus = async () => {
-    try {
-      const { data, error } = await supabase.auth.mfa.listFactors();
-      if (error) throw error;
-      
-      const totpFactor = data?.totp?.find(factor => factor.status === 'verified');
-      setIsEnabled(!!totpFactor);
-    } catch (error) {
-      
-    }
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) throw error;
+
+    const totpFactor = data?.totp?.find(
+      (factor) => factor.status === "verified"
+    );
+    setIsEnabled(!!totpFactor);
   };
 
   const generateBackupCodes = () => {
@@ -81,10 +91,10 @@ export function TwoFactorSetup() {
     try {
       // First, check for and clean up any incomplete factors
       const { data: existingFactors } = await supabase.auth.mfa.listFactors();
-      
+
       if (existingFactors?.totp) {
         for (const factor of existingFactors.totp) {
-          if (factor.status !== 'verified') {
+          if (factor.status !== "verified") {
             // Unenroll incomplete factors
             await supabase.auth.mfa.unenroll({ factorId: factor.id });
           }
@@ -93,22 +103,22 @@ export function TwoFactorSetup() {
 
       // Now proceed with enrollment
       const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: 'totp',
+        factorType: "totp",
       });
 
       if (error) throw error;
 
-    // data contains enrolled factor id and totp details
-    setQrCode(data.totp.qr_code);
-    setSecret(data.totp.secret);
-    setFactorId(data.id);
-      setSetupStep('scan');
+      // data contains enrolled factor id and totp details
+      setQrCode(data.totp.qr_code);
+      setSecret(data.totp.secret);
+      setFactorId(data.id);
+      setSetupStep("scan");
       setShowSetup(true);
     } catch (error: any) {
       toast({
-        title: 'Fout bij instellen 2FA',
-        description: error.message || 'Er is een fout opgetreden.',
-        variant: 'destructive',
+        title: "Fout bij instellen 2FA",
+        description: error.message || "Er is een fout opgetreden.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -121,11 +131,12 @@ export function TwoFactorSetup() {
 
     try {
       // For enrollment verification we request a challenge first, then verify with that challengeId
-      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      const { data: challengeData, error: challengeError } =
+        await supabase.auth.mfa.challenge({ factorId });
       if (challengeError) throw challengeError;
       const cid = (challengeData as any)?.id;
       if (!cid) {
-        throw new Error('Geen challenge id ontvangen');
+        throw new Error("Geen challenge id ontvangen");
       }
 
       const { error } = await supabase.auth.mfa.verify({
@@ -145,33 +156,43 @@ export function TwoFactorSetup() {
         const hashes = await Promise.all(codes.map((c) => sha256Hex(c)));
 
         // Build JSON objects with hash and used flag
-        const payload = hashes.map((h) => ({ hash: h, used: false, created_at: new Date().toISOString() }));
+        const payload = hashes.map((h) => ({
+          hash: h,
+          used: false,
+          created_at: new Date().toISOString(),
+        }));
 
         if (user?.id) {
           const { error: updateError } = await (supabase as any)
-            .from('profiles')
+            .from("profiles")
             .update({ backup_codes: payload })
-            .eq('id', user.id);
+            .eq("id", user.id);
 
           if (updateError) {
-            
             // Fall back: do not block user from seeing codes, but warn
-            toast({ title: 'Waarschuwing', description: 'Kon backup codes niet veilig opslaan op de server. Sla ze lokaal op.', variant: 'destructive' });
+            toast({
+              title: "Waarschuwing",
+              description:
+                "Kon backup codes niet veilig opslaan op de server. Sla ze lokaal op.",
+              variant: "destructive",
+            });
           }
-        } else {
-          
         }
       } catch (err) {
-        
-        toast({ title: 'Waarschuwing', description: 'Er is iets misgegaan bij het opslaan van backup codes. Sla ze lokaal op.', variant: 'destructive' });
+        toast({
+          title: "Waarschuwing",
+          description:
+            "Er is iets misgegaan bij het opslaan van backup codes. Sla ze lokaal op.",
+          variant: "destructive",
+        });
       }
 
-      setSetupStep('backup');
+      setSetupStep("backup");
     } catch (error: any) {
       toast({
-        title: 'Verificatie mislukt',
-        description: 'De ingevoerde code is onjuist. Probeer het opnieuw.',
-        variant: 'destructive',
+        title: "Verificatie mislukt",
+        description: "De ingevoerde code is onjuist. Probeer het opnieuw.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -182,19 +203,23 @@ export function TwoFactorSetup() {
     setLoading(true);
     try {
       const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totpFactor = factors?.totp?.find(factor => factor.status === 'verified');
+      const totpFactor = factors?.totp?.find(
+        (factor) => factor.status === "verified"
+      );
 
       if (!totpFactor) {
         // nothing verified: try unenrolling any incomplete factor directly
         if (factors?.totp?.length) {
           for (const factor of factors.totp) {
-            await supabase.auth.mfa.unenroll({ factorId: factor.id }).catch(() => {});
+            await supabase.auth.mfa
+              .unenroll({ factorId: factor.id })
+              .catch(() => {});
           }
         }
 
         toast({
-          title: '2FA uitgeschakeld',
-          description: 'Tweefactorauthenticatie is uitgeschakeld.',
+          title: "2FA uitgeschakeld",
+          description: "Tweefactorauthenticatie is uitgeschakeld.",
         });
         setIsEnabled(false);
         return;
@@ -202,19 +227,20 @@ export function TwoFactorSetup() {
 
       // If factor is verified, Supabase requires AAL2 to unenroll. Start a challenge
       // and ask the user to enter their current TOTP code to verify before unenrolling.
-      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
+      const { data: challengeData, error: challengeError } =
+        await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
       if (challengeError) throw challengeError;
 
       const cid = (challengeData as any)?.id;
       setDisableFactorId(totpFactor.id);
-      setDisableChallengeId(cid ?? '');
-      setDisableVerificationCode('');
+      setDisableChallengeId(cid ?? "");
+      setDisableVerificationCode("");
       setShowDisableVerify(true);
     } catch (error: any) {
       toast({
-        title: 'Fout bij uitschakelen 2FA',
-        description: error.message || 'Er is een fout opgetreden.',
-        variant: 'destructive',
+        title: "Fout bij uitschakelen 2FA",
+        description: error.message || "Er is een fout opgetreden.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -225,7 +251,7 @@ export function TwoFactorSetup() {
     e?.preventDefault();
     setDisableLoading(true);
     try {
-      if (!disableFactorId) throw new Error('Geen factor geselecteerd');
+      if (!disableFactorId) throw new Error("Geen factor geselecteerd");
 
       // Verify the code to elevate the session (AAL2) so we can unenroll
       const { error: verifyError } = await supabase.auth.mfa.verify({
@@ -236,17 +262,26 @@ export function TwoFactorSetup() {
       if (verifyError) throw verifyError;
 
       // After successful verification, unenroll the factor
-      const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: disableFactorId });
+      const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+        factorId: disableFactorId,
+      });
       if (unenrollError) throw unenrollError;
 
-      toast({ title: '2FA uitgeschakeld', description: 'Tweefactorauthenticatie is uitgeschakeld.' });
+      toast({
+        title: "2FA uitgeschakeld",
+        description: "Tweefactorauthenticatie is uitgeschakeld.",
+      });
       setIsEnabled(false);
       setShowDisableVerify(false);
-      setDisableFactorId('');
-      setDisableChallengeId('');
-      setDisableVerificationCode('');
+      setDisableFactorId("");
+      setDisableChallengeId("");
+      setDisableVerificationCode("");
     } catch (err: any) {
-      toast({ title: 'Verificatie mislukt', description: err.message || 'De ingevoerde code is onjuist.', variant: 'destructive' });
+      toast({
+        title: "Verificatie mislukt",
+        description: err.message || "De ingevoerde code is onjuist.",
+        variant: "destructive",
+      });
     } finally {
       setDisableLoading(false);
     }
@@ -259,12 +294,17 @@ export function TwoFactorSetup() {
   };
 
   const downloadBackupCodes = () => {
-    const text = backupCodes.join('\n');
-    const blob = new Blob([`Backup codes voor tweefactorauthenticatie\n\nBewaar deze codes op een veilige plek.\nElke code kan slechts één keer worden gebruikt.\n\n${text}`], { type: 'text/plain' });
+    const text = backupCodes.join("\n");
+    const blob = new Blob(
+      [
+        `Backup codes voor tweefactorauthenticatie\n\nBewaar deze codes op een veilige plek.\nElke code kan slechts één keer worden gebruikt.\n\n${text}`,
+      ],
+      { type: "text/plain" }
+    );
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = '2fa-backup-codes.txt';
+    a.download = "2fa-backup-codes.txt";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -272,25 +312,25 @@ export function TwoFactorSetup() {
   };
 
   const copyBackupCodes = () => {
-    navigator.clipboard.writeText(backupCodes.join('\n'));
+    navigator.clipboard.writeText(backupCodes.join("\n"));
     toast({
-      title: 'Gekopieerd',
-      description: 'Backup codes zijn naar het klembord gekopieerd.',
+      title: "Gekopieerd",
+      description: "Backup codes zijn naar het klembord gekopieerd.",
     });
   };
 
   const handleFinishSetup = () => {
     toast({
-      title: '2FA ingeschakeld',
-      description: 'Tweefactorauthenticatie is succesvol ingeschakeld.',
+      title: "2FA ingeschakeld",
+      description: "Tweefactorauthenticatie is succesvol ingeschakeld.",
     });
-    
+
     setIsEnabled(true);
     setShowSetup(false);
-    setSetupStep('scan');
-    setVerificationCode('');
-    setQrCode('');
-    setSecret('');
+    setSetupStep("scan");
+    setVerificationCode("");
+    setQrCode("");
+    setSecret("");
     setBackupCodes([]);
   };
 
@@ -310,12 +350,12 @@ export function TwoFactorSetup() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <p className="font-medium">
-                Status: {isEnabled ? 'Ingeschakeld' : 'Uitgeschakeld'}
+                Status: {isEnabled ? "Ingeschakeld" : "Uitgeschakeld"}
               </p>
               <p className="text-sm text-muted-foreground">
                 {isEnabled
-                  ? 'Uw account is beveiligd met 2FA'
-                  : 'Schakel 2FA in voor extra beveiliging'}
+                  ? "Uw account is beveiligd met 2FA"
+                  : "Schakel 2FA in voor extra beveiliging"}
               </p>
             </div>
             {isEnabled ? (
@@ -337,43 +377,47 @@ export function TwoFactorSetup() {
             <Alert>
               <Smartphone className="h-4 w-4" />
               <AlertDescription>
-                U wordt gevraagd om een code in te voeren wanneer u inlogt vanaf een nieuw apparaat.
+                U wordt gevraagd om een code in te voeren wanneer u inlogt vanaf
+                een nieuw apparaat.
               </AlertDescription>
             </Alert>
           )}
         </CardContent>
       </Card>
 
-      <Dialog open={showSetup} onOpenChange={(open) => {
-        if (!open) {
-          // Clean up incomplete enrollment if user closes during setup
-          if (factorId && setupStep !== 'backup') {
-            supabase.auth.mfa.unenroll({ factorId }).catch(() => {});
+      <Dialog
+        open={showSetup}
+        onOpenChange={(open) => {
+          if (!open) {
+            // Clean up incomplete enrollment if user closes during setup
+            if (factorId && setupStep !== "backup") {
+              supabase.auth.mfa.unenroll({ factorId }).catch(() => {});
+            }
+            setSetupStep("scan");
+            setShowSetup(false);
           }
-          setSetupStep('scan');
-          setShowSetup(false);
-        }
-      }}>
+        }}
+      >
         <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>
-              {setupStep === 'scan' && 'Tweefactorauthenticatie instellen'}
-              {setupStep === 'verify' && 'Verificatiecode invoeren'}
-              {setupStep === 'backup' && 'Backup codes opslaan'}
+              {setupStep === "scan" && "Tweefactorauthenticatie instellen"}
+              {setupStep === "verify" && "Verificatiecode invoeren"}
+              {setupStep === "backup" && "Backup codes opslaan"}
             </DialogTitle>
             <DialogDescription>
-              {setupStep === 'scan' && 'Scan de QR-code of voer de code handmatig in'}
-              {setupStep === 'verify' && 'Voer de code uit uw authenticatie-app in om te verifiëren'}
-              {setupStep === 'backup' && 'Bewaar deze codes op een veilige plek voor toegang zonder authenticatie-app'}
+              {setupStep === "scan" &&
+                "Scan de QR-code of voer de code handmatig in"}
+              {setupStep === "verify" &&
+                "Voer de code uit uw authenticatie-app in om te verifiëren"}
+              {setupStep === "backup" &&
+                "Bewaar deze codes op een veilige plek voor toegang zonder authenticatie-app"}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-            {setupStep === 'scan' ? (
-              <div 
-                key="scan-step"
-                className="space-y-4 animate-fade-in"
-              >
+            {setupStep === "scan" ? (
+              <div key="scan-step" className="space-y-4 animate-fade-in">
                 <Tabs defaultValue="qr" className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="qr" className="gap-2">
@@ -385,23 +429,28 @@ export function TwoFactorSetup() {
                       Handmatig
                     </TabsTrigger>
                   </TabsList>
-                  
+
                   <TabsContent value="qr" className="space-y-4 mt-4">
                     <div className="flex flex-col items-center space-y-4">
                       {qrCode && (
                         <div className="rounded-lg border p-4 bg-white">
-                          <img src={qrCode} alt="QR Code" className="w-48 h-48" />
+                          <img
+                            src={qrCode}
+                            alt="QR Code"
+                            className="w-48 h-48"
+                          />
                         </div>
                       )}
                       <Alert>
                         <Smartphone className="h-4 w-4" />
                         <AlertDescription className="text-sm">
-                          Scan deze code met Google Authenticator, Microsoft Authenticator, of Authy.
+                          Scan deze code met Google Authenticator, Microsoft
+                          Authenticator, of Authy.
                         </AlertDescription>
                       </Alert>
                     </div>
                   </TabsContent>
-                  
+
                   <TabsContent value="manual" className="space-y-4 mt-4">
                     <div className="space-y-2">
                       <Label className="text-sm">
@@ -429,15 +478,18 @@ export function TwoFactorSetup() {
                     </div>
                     <Alert>
                       <AlertDescription className="text-sm">
-                        1. Open uw authenticatie-app<br/>
-                        2. Kies "Account toevoegen" of "+"<br/>
-                        3. Selecteer "Handmatige invoer"<br/>
+                        1. Open uw authenticatie-app
+                        <br />
+                        2. Kies "Account toevoegen" of "+"
+                        <br />
+                        3. Selecteer "Handmatige invoer"
+                        <br />
                         4. Plak de bovenstaande code
                       </AlertDescription>
                     </Alert>
                   </TabsContent>
                 </Tabs>
-                
+
                 <div className="flex gap-2 pt-2">
                   <Button
                     type="button"
@@ -447,19 +499,19 @@ export function TwoFactorSetup() {
                   >
                     Annuleren
                   </Button>
-                  <Button 
-                    className="flex-1 gap-2" 
-                    onClick={() => setSetupStep('verify')}
+                  <Button
+                    className="flex-1 gap-2"
+                    onClick={() => setSetupStep("verify")}
                   >
                     Volgende
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            ) : setupStep === 'verify' ? (
-              <form 
+            ) : setupStep === "verify" ? (
+              <form
                 key="verify-step"
-                onSubmit={handleVerifyAndEnable} 
+                onSubmit={handleVerifyAndEnable}
                 className="space-y-4 animate-fade-in"
               >
                 <div className="space-y-2">
@@ -472,7 +524,9 @@ export function TwoFactorSetup() {
                     maxLength={6}
                     placeholder="000000"
                     value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) =>
+                      setVerificationCode(e.target.value.replace(/\D/g, ""))
+                    }
                     className="text-center text-2xl tracking-widest font-mono"
                     autoFocus
                     required
@@ -481,47 +535,50 @@ export function TwoFactorSetup() {
                     Voer de 6-cijferige code uit uw authenticatie-app in
                   </p>
                 </div>
-                
+
                 <Alert>
                   <Smartphone className="h-4 w-4" />
                   <AlertDescription className="text-sm">
-                    De code wordt elke 30 seconden vernieuwd. Gebruik de meest recente code.
+                    De code wordt elke 30 seconden vernieuwd. Gebruik de meest
+                    recente code.
                   </AlertDescription>
                 </Alert>
-                
+
                 <div className="flex gap-2 pt-2">
                   <Button
                     type="button"
                     variant="outline"
                     className="flex-1"
                     onClick={() => {
-                      setSetupStep('scan');
-                      setVerificationCode('');
+                      setSetupStep("scan");
+                      setVerificationCode("");
                     }}
                     disabled={loading}
                   >
                     Terug
                   </Button>
                   <Button type="submit" className="flex-1" disabled={loading}>
-                    {loading ? 'Verifiëren...' : 'Verifiëren'}
+                    {loading ? "Verifiëren..." : "Verifiëren"}
                   </Button>
                 </div>
               </form>
             ) : (
-              <div 
-                key="backup-step"
-                className="space-y-4 animate-fade-in"
-              >
+              <div key="backup-step" className="space-y-4 animate-fade-in">
                 <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
                   <AlertDescription className="text-sm text-yellow-800 dark:text-yellow-200">
-                    <strong>Belangrijk:</strong> Bewaar deze codes op een veilige plek. Ze kunnen worden gebruikt om in te loggen als u geen toegang heeft tot uw authenticatie-app.
+                    <strong>Belangrijk:</strong> Bewaar deze codes op een
+                    veilige plek. Ze kunnen worden gebruikt om in te loggen als
+                    u geen toegang heeft tot uw authenticatie-app.
                   </AlertDescription>
                 </Alert>
 
                 <div className="rounded-lg border bg-muted p-4">
                   <div className="grid grid-cols-2 gap-2 font-mono text-sm">
                     {backupCodes.map((code, index) => (
-                      <div key={index} className="p-2 bg-background rounded border">
+                      <div
+                        key={index}
+                        className="p-2 bg-background rounded border"
+                      >
                         {code}
                       </div>
                     ))}
@@ -550,14 +607,12 @@ export function TwoFactorSetup() {
 
                 <Alert>
                   <AlertDescription className="text-sm">
-                    Elke backup code kan slechts één keer worden gebruikt. Genereer nieuwe codes als u ze allemaal heeft opgebruikt.
+                    Elke backup code kan slechts één keer worden gebruikt.
+                    Genereer nieuwe codes als u ze allemaal heeft opgebruikt.
                   </AlertDescription>
                 </Alert>
 
-                <Button 
-                  className="w-full" 
-                  onClick={handleFinishSetup}
-                >
+                <Button className="w-full" onClick={handleFinishSetup}>
                   Voltooien
                 </Button>
               </div>
@@ -565,21 +620,25 @@ export function TwoFactorSetup() {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Dialog shown when disabling a verified factor: ask for a TOTP code to elevate to AAL2 */}
-      <Dialog open={showDisableVerify} onOpenChange={(open) => {
-        if (!open) {
-          setShowDisableVerify(false);
-          setDisableVerificationCode('');
-          setDisableFactorId('');
-          setDisableChallengeId('');
-        }
-      }}>
+      <Dialog
+        open={showDisableVerify}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowDisableVerify(false);
+            setDisableVerificationCode("");
+            setDisableFactorId("");
+            setDisableChallengeId("");
+          }
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Bevestig uitschakelen 2FA</DialogTitle>
             <DialogDescription>
-              Voer de 6-cijferige code uit uw authenticatie-app in om 2FA uit te schakelen.
+              Voer de 6-cijferige code uit uw authenticatie-app in om 2FA uit te
+              schakelen.
             </DialogDescription>
           </DialogHeader>
 
@@ -594,7 +653,9 @@ export function TwoFactorSetup() {
                 maxLength={6}
                 placeholder="000000"
                 value={disableVerificationCode}
-                onChange={(e) => setDisableVerificationCode(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) =>
+                  setDisableVerificationCode(e.target.value.replace(/\D/g, ""))
+                }
                 className="text-center text-2xl tracking-widest font-mono"
                 autoFocus
                 required
@@ -602,14 +663,25 @@ export function TwoFactorSetup() {
             </div>
 
             <div className="flex gap-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => {
-                setShowDisableVerify(false);
-                setDisableVerificationCode('');
-              }} disabled={disableLoading}>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowDisableVerify(false);
+                  setDisableVerificationCode("");
+                }}
+                disabled={disableLoading}
+              >
                 Annuleren
               </Button>
-              <Button type="submit" variant="destructive" className="flex-1" disabled={disableLoading}>
-                {disableLoading ? 'Bezig...' : 'Bevestigen en uitschakelen'}
+              <Button
+                type="submit"
+                variant="destructive"
+                className="flex-1"
+                disabled={disableLoading}
+              >
+                {disableLoading ? "Bezig..." : "Bevestigen en uitschakelen"}
               </Button>
             </div>
           </form>
