@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { AppSettingsGate } from "./components/AppSettingsGate";
 import { Layout } from "./components/Layout";
 import { PageTransition } from "./components/PageTransition";
 import Search from "./pages/Search";
@@ -17,6 +18,8 @@ import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Favorites from "./pages/Favorites";
+import Pricing from "./pages/Pricing";
+import Success from "./pages/Success";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +44,8 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/auth" element={<Auth />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/success" element={<Success />} />
         <Route
           path="/"
           element={
@@ -126,15 +131,17 @@ const App = () => (
       themes={["light", "dark", "amsterdam", "custom"]}
       storageKey="app-theme"
     >
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AnimatedRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
+      <AppSettingsGate>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AnimatedRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </AppSettingsGate>
     </ThemeProvider>
   </QueryClientProvider>
 );
