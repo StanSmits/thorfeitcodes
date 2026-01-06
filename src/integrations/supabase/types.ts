@@ -462,6 +462,10 @@ export type Database = {
         Args: { p_code: string; p_user: string }
         Returns: boolean
       }
+      get_app_settings: {
+        Args: never
+        Returns: { [key: string]: boolean }
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

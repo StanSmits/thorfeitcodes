@@ -12,9 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useEffect } from "react";
+import { useAppSettings } from '@/hooks/useAppSettings';
 
 export function UserProfileDropdown() {
   const { user, roles, signOut } = useAuth();
+  const { isSubscriptionEnabled } = useAppSettings();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -90,13 +92,13 @@ export function UserProfileDropdown() {
           <Settings className="mr-2 h-4 w-4" />
           <span>Instellingen</span>
         </DropdownMenuItem>
-        <DropdownMenuItem disabled className="opacity-50">
-          <CreditCard className="mr-2 h-4 w-4" />
-          <span>Abonnement</span>
-          <span className="ml-auto text-xs text-muted-foreground">
-            Binnenkort
-          </span>
-        </DropdownMenuItem>
+        {isSubscriptionEnabled && (
+          <DropdownMenuItem onClick={() => navigate("/pricing")} className="cursor-pointer">
+            <CreditCard className="mr-2 h-4 w-4" />
+            <span>Abonnement</span>
+            <span className="ml-auto text-xs text-muted-foreground">Bekijk</span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />

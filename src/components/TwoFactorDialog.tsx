@@ -80,14 +80,14 @@ export function TwoFactorDialog({
             ) : (
               'Er is een e-mail gestuurd met een 6-cijferige code. Voer deze in om door te gaan.'
             )}
-            <div className="mt-2 text-xs">
-              {mode !== 'backup' ? (
-                <button type="button" className="text-primary underline" onClick={() => setMode('backup')}>Gebruik backup code</button>
-              ) : (
-                <button type="button" className="text-primary underline" onClick={() => setMode(codeType)}>Gebruik verificatie-app</button>
-              )}
-            </div>
           </DialogDescription>
+          <div className="mt-2 text-xs text-center">
+            {mode !== 'backup' ? (
+              <button type="button" className="text-primary underline" onClick={() => setMode('backup')}>Gebruik backup code</button>
+            ) : (
+              <button type="button" className="text-primary underline" onClick={() => setMode(codeType)}>Gebruik verificatie-app</button>
+            )}
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

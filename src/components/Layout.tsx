@@ -10,9 +10,11 @@ import { useGlobalKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface LayoutProps {
   children: ReactNode;
+  /** When true, show header/footer even for anonymous users (useful for public pages) */
+  showForAnonymous?: boolean;
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, showForAnonymous = false }: LayoutProps) {
   const { user, isModerator } = useAuth();
   const location = useLocation();
   
@@ -30,7 +32,7 @@ export function Layout({ children }: LayoutProps) {
     navigation.push({ name: 'Beheer', href: '/admin', icon: Settings });
   }
 
-  if (!user) {
+  if (!user && !showForAnonymous) {
     return <>{children}</>;
   }
 
