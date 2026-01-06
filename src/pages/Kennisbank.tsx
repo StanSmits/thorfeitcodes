@@ -84,15 +84,7 @@ export default function Kennisbank() {
   };
 
   const handleFeitcodeClick = (feitcode: any) => {
-    navigate("/", {
-      state: {
-        prefill: {
-          factcode: feitcode.factcode,
-          form_values: feitcode.form_values,
-          location_value: feitcode.location_value,
-        },
-      },
-    });
+    navigate(`/generator/${feitcode.factcode}`);
   };
 
   return (
@@ -135,11 +127,9 @@ export default function Kennisbank() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {isLoading ? (
-          <>
-            {Array.from({ length: 9 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </>
+          Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))
         ) : roadSigns?.length === 0 ? (
           <Card className="col-span-full">
             <CardContent className="flex flex-col items-center justify-center py-12">

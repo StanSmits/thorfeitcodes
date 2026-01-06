@@ -9,6 +9,7 @@ import { ThemeProvider } from "./components/ThemeProvider";
 import { Layout } from "./components/Layout";
 import { PageTransition } from "./components/PageTransition";
 import Search from "./pages/Search";
+import Generator from "./pages/Generator";
 import Kennisbank from "./pages/Kennisbank";
 import SavedRvws from "./pages/SavedRvws";
 import Admin from "./pages/Admin";
@@ -46,6 +47,16 @@ function AnimatedRoutes() {
             <ProtectedRoute>
               <PageTransition>
                 <Search />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/generator/:code"
+          element={
+            <ProtectedRoute>
+              <PageTransition>
+                <Generator />
               </PageTransition>
             </ProtectedRoute>
           }

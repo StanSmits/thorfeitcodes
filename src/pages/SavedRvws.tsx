@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { CalendarIcon, X, FileText, ChevronRight, Trash } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { SkeletonCard } from "@/components/ui/SkeletonCard";
+import { SkeletonListItem } from "@/components/ui/SkeletonCard";
 
 export default function SavedRvws() {
   const [factcodeFilter, setFactcodeFilter] = useState<string>("all");
@@ -132,14 +132,10 @@ export default function SavedRvws() {
       console.error("Failed to update timestamp", err);
     }
 
-    // Navigate to the Search page and pass prefill data via location.state
-    navigate("/", {
+    // Navigate to the generator page with prefilled form values
+    navigate(`/generator/${rvw.factcode}`, {
       state: {
-        prefill: {
-          factcode: rvw.factcode,
-          form_values: rvw.form_values,
-          location_value: rvw.location_value,
-        },
+        formValues: rvw.form_values,
       },
     });
   };
@@ -272,11 +268,11 @@ export default function SavedRvws() {
 
       <div className="space-y-4">
         {isLoading ? (
-          <>
-            {Array.from({ length: 9 }).map((_, i) => (
-              <SkeletonCard key={i} />
+          <div className="space-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonListItem key={i} />
             ))}
-          </>
+          </div>
         ) : filteredRvws.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">

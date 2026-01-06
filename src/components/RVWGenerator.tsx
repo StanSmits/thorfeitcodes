@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, Copy, Check, HelpCircle, ChevronRight } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { deepEqual } from "@/lib/utils";
 
@@ -365,6 +371,12 @@ export function RVWGenerator({
     const cleanText = fullGeneratedText;
     navigator.clipboard.writeText(cleanText);
     setCopied(true);
+    
+    // Haptic feedback on supported devices
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+    
     toast({
       title: "Gekopieerd",
       description: "De tekst is naar het klembord gekopieerd.",
@@ -1051,27 +1063,39 @@ export function RVWGenerator({
         </div>
       )}
 
-      {/* Mobile floating copy button (bottom-right) */}
-      <div className="md:hidden">
-        {/* Place the button above the mobile bottom nav and safe areas */}
-        <div className="fixed z-[100] right-4 pointer-events-none bottom-[calc(env(safe-area-inset-bottom)+5rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+4rem)]">
-          <Button
-            onClick={handleCopy}
-            disabled={!fullGeneratedText}
-            size="icon"
-            variant="secondary"
-            aria-label="Kopieer RVW"
-            className="shadow-lg pointer-events-auto"
-            title="Kopieer RVW"
+      {/* Floating copy button - visible on mobile and tablet when layout is single column */}
+      <AnimatePresence>
+        {fullGeneratedText && (
+          <motion.div
+            className="lg:hidden fixed z-[100] right-4 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+5rem)] md:bottom-[calc(env(safe-area-inset-bottom)+5.5rem)]"
+            initial={{ opacity: 0, y: 24, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
           >
-            {copied ? (
-              <Check className="h-5 w-5" />
-            ) : (
-              <Copy className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
-      </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleCopy}
+                  size="icon"
+                  variant="secondary"
+                  aria-label="Kopieer naar klembord"
+                  className="shadow-lg"
+                >
+                  {copied ? (
+                    <Check className="h-5 w-5" />
+                  ) : (
+                    <Copy className="h-5 w-5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p>Kopieer naar klembord</p>
+              </TooltipContent>
+            </Tooltip>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

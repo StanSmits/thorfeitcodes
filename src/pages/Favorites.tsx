@@ -1,17 +1,16 @@
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useFavorites } from '@/hooks/useFavorites';
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Star, FileText } from 'lucide-react';
-import { RVWGenerator } from '@/components/RVWGenerator';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 
 export default function Favorites() {
   const { favorites, toggleFavorite } = useFavorites();
-  const [selectedFactcode, setSelectedFactcode] = useState<any>(null);
+  const navigate = useNavigate();
 
   const { data: feitcodes, isLoading } = useQuery({
     queryKey: ['favorite-feitcodes', favorites],
@@ -27,16 +26,9 @@ export default function Favorites() {
     enabled: favorites.length > 0,
   });
 
-  if (selectedFactcode) {
-    return (
-      <div className="mx-auto max-w-7xl space-y-6">
-        <RVWGenerator
-          factcode={selectedFactcode}
-          onBack={() => setSelectedFactcode(null)}
-        />
-      </div>
-    );
-  }
+  const handleCardClick = (factcode: string) => {
+    navigate(`/generator/${factcode}`);
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -84,7 +76,7 @@ export default function Favorites() {
                     >
                       <Star className="h-4 w-4 fill-favorite text-favorite" />
                     </Button>
-                    <div onClick={() => setSelectedFactcode(code)}>
+                    <div onClick={() => handleCardClick(code.factcode)}>
                       <CardHeader>
                         <CardTitle className="text-lg pr-8">{code.factcode}</CardTitle>
                         <CardDescription className="line-clamp-2">

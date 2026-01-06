@@ -271,31 +271,33 @@ export default function Auth() {
   if (checkingSession) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-3 text-center">
-            <Skeleton className="mx-auto h-16 w-16 rounded-full" />
-            <Skeleton className="mx-auto h-7 w-48" />
-            <Skeleton className="mx-auto h-5 w-64" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+        <Card className="w-full max-w-md border-0 shadow-lg">
+          <CardHeader className="space-y-4 text-center pb-2">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <div className="h-8 w-8 animate-pulse rounded-full bg-primary/30" />
             </div>
-            <div className="space-y-4 pt-4">
+            <Skeleton className="mx-auto h-7 w-48" />
+            <Skeleton className="mx-auto h-5 w-56" />
+          </CardHeader>
+          <CardContent className="space-y-6 px-6">
+            <div className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-10 w-full rounded-md" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full rounded-md" />
               </div>
               <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full rounded-md" />
               </div>
-              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full rounded-md" />
             </div>
           </CardContent>
-          <CardFooter>
-            <Skeleton className="mx-auto h-4 w-72" />
+          <CardFooter className="pt-2">
+            <Skeleton className="mx-auto h-4 w-64" />
           </CardFooter>
         </Card>
       </div>
@@ -310,8 +312,8 @@ export default function Auth() {
         onCancel={handleTwoFactorCancel}
         codeType="app"
       />
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 overflow-x-hidden">
+        <Card className="w-full max-w-md border-0 shadow-lg">
           <CardHeader className="space-y-3 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <Shield className="h-8 w-8 text-primary" />
@@ -321,21 +323,21 @@ export default function Auth() {
               Hulpmiddel voor het opstellen van redenen van wetenschap
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-6">
             <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); clearValidationErrors(); }} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Inloggen</TabsTrigger>
                 <TabsTrigger value="signup">Registreren</TabsTrigger>
               </TabsList>
-              <div className="relative mt-4 overflow-hidden">
+              <div className="relative mt-6">
                 <AnimatePresence mode="wait" initial={false}>
                   {activeTab === "signin" && (
                     <motion.div
                       key="signin"
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: 20, opacity: 0 }}
-                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
                     >
                       <form onSubmit={handleSignIn} className="space-y-4">
                         <div className="space-y-2">
@@ -386,10 +388,10 @@ export default function Auth() {
                   {activeTab === "signup" && (
                     <motion.div
                       key="signup"
-                      initial={{ x: 20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: -20, opacity: 0 }}
-                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
                     >
                       <form onSubmit={handleSignUp} className="space-y-4">
                         <div className="space-y-2">
@@ -462,8 +464,10 @@ export default function Auth() {
               </div>
             </Tabs>
           </CardContent>
-          <CardFooter className="text-center text-sm text-muted-foreground">
-            Alleen voor geautoriseerd personeel van de Gemeente Amsterdam.
+          <CardFooter className="px-6 pb-6">
+            <p className="text-center text-sm text-muted-foreground w-full">
+              Alleen voor geautoriseerd personeel van de Gemeente Amsterdam.
+            </p>
           </CardFooter>
         </Card>
       </div>

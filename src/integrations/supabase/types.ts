@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      factcode_22_12_2025_backup: {
+        Row: {
+          access_count: number | null
+          conditional_rules: Json | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          factcode: string | null
+          field_options: Json | null
+          field_tooltips: Json | null
+          grondslag_artikel: string | null
+          grondslag_type:
+            | Database["public"]["Enums"]["feitcodes_grondslag_type_enum"]
+            | null
+          grondslag_url: string | null
+          id: string | null
+          image_url: string | null
+          location_field: string | null
+          template: string | null
+          tooltip_text: string | null
+        }
+        Insert: {
+          access_count?: number | null
+          conditional_rules?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          factcode?: string | null
+          field_options?: Json | null
+          field_tooltips?: Json | null
+          grondslag_artikel?: string | null
+          grondslag_type?:
+            | Database["public"]["Enums"]["feitcodes_grondslag_type_enum"]
+            | null
+          grondslag_url?: string | null
+          id?: string | null
+          image_url?: string | null
+          location_field?: string | null
+          template?: string | null
+          tooltip_text?: string | null
+        }
+        Update: {
+          access_count?: number | null
+          conditional_rules?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          factcode?: string | null
+          field_options?: Json | null
+          field_tooltips?: Json | null
+          grondslag_artikel?: string | null
+          grondslag_type?:
+            | Database["public"]["Enums"]["feitcodes_grondslag_type_enum"]
+            | null
+          grondslag_url?: string | null
+          id?: string | null
+          image_url?: string | null
+          location_field?: string | null
+          template?: string | null
+          tooltip_text?: string | null
+        }
+        Relationships: []
+      }
       factcode_suggestions: {
         Row: {
           created_at: string | null
@@ -285,7 +354,15 @@ export type Database = {
           location_value?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "saved_rvws_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
