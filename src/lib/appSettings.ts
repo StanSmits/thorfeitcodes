@@ -29,7 +29,7 @@ export async function fetchAppSettings(): Promise<Settings> {
       const { data, error } = await supabase.rpc('get_app_settings');
 
       if (error) {
-        console.error('Error fetching app settings:', error);
+        
         return DEFAULT_SETTINGS;
       }
 
@@ -59,7 +59,7 @@ export async function fetchAppSettings(): Promise<Settings> {
 
       return settingsCache;
     } catch (err) {
-      console.error('Error fetching app settings:', err);
+      
       return DEFAULT_SETTINGS;
     } finally {
       fetchPromise = null;

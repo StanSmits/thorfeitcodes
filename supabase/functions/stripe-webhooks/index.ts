@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
         webhookSecret
       );
     } catch (err) {
-      console.error("Webhook signature verification failed:", err);
+      
       return new Response(
         JSON.stringify({ error: "Webhook signature verification failed" }),
         { status: 400, headers: corsHeaders }
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
         const userId = (customer.metadata?.["user_id"]) as string;
 
         if (!userId) {
-          console.error("Could not find user_id for customer:", customerId);
+          
           break;
         }
 
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
             : null,
         });
 
-        console.log(`Subscription created for user ${userId}`);
+        
         break;
       }
 
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
         const userId = (customer.metadata?.["user_id"]) as string;
 
         if (!userId) {
-          console.error("Could not find user_id for customer:", customerId);
+          
           break;
         }
 
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
           })
           .eq("user_id", userId);
 
-        console.log(`Subscription updated for user ${userId}`);
+        
         break;
       }
 
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
         const userId = (customer.metadata?.["user_id"]) as string;
 
         if (!userId) {
-          console.error("Could not find user_id for customer:", customerId);
+          
           break;
         }
 
@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
           })
           .eq("user_id", userId);
 
-        console.log(`Subscription deleted for user ${userId}`);
+        
         break;
       }
 
@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
         const userId = (customer.metadata?.["user_id"]) as string;
 
         if (!userId) {
-          console.error("Could not find user_id for customer:", customerId);
+          
           break;
         }
 
@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
           paid_at: invoice.paid_date ? new Date(invoice.paid_date * 1000) : null,
         });
 
-        console.log(`Payment succeeded for user ${userId}`);
+        
         break;
       }
 
@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
         const userId = (customer.metadata?.["user_id"]) as string;
 
         if (!userId) {
-          console.error("Could not find user_id for customer:", customerId);
+          
           break;
         }
 
@@ -232,12 +232,12 @@ Deno.serve(async (req) => {
           failure_reason: invoice.last_finalization_error?.message || "Unknown error",
         });
 
-        console.log(`Payment failed for user ${userId}`);
+        
         break;
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        
     }
 
     return new Response(
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Webhook error:", error);
+    
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",

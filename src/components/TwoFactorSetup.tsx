@@ -63,7 +63,7 @@ export function TwoFactorSetup() {
       const totpFactor = data?.totp?.find(factor => factor.status === 'verified');
       setIsEnabled(!!totpFactor);
     } catch (error) {
-      console.error('Error checking MFA status:', error);
+      
     }
   };
 
@@ -154,15 +154,15 @@ export function TwoFactorSetup() {
             .eq('id', user.id);
 
           if (updateError) {
-            console.error('Failed to store backup code hashes in profiles:', updateError);
+            
             // Fall back: do not block user from seeing codes, but warn
             toast({ title: 'Waarschuwing', description: 'Kon backup codes niet veilig opslaan op de server. Sla ze lokaal op.', variant: 'destructive' });
           }
         } else {
-          console.warn('No user id available to store backup codes');
+          
         }
       } catch (err) {
-        console.error('Error hashing/storing backup codes', err);
+        
         toast({ title: 'Waarschuwing', description: 'Er is iets misgegaan bij het opslaan van backup codes. Sla ze lokaal op.', variant: 'destructive' });
       }
 

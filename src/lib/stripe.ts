@@ -1,25 +1,23 @@
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe } from "@stripe/stripe-js";
 
-const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export const getStripe = () => stripePromise;
 
 export const STRIPE_PRODUCTS = {
   MONTHLY: {
-    id: 'monthly-subscription',
-    name: 'Monthly Plan',
+    id: "monthly-subscription",
+    name: "Monthly Plan",
     price: 0.99,
-    currency: 'eur',
-    interval: 'month',
+    currency: "eur",
+    interval: "month",
   },
   YEARLY: {
-    id: 'yearly-subscription',
-    name: 'Annual Plan',
+    id: "yearly-subscription",
+    name: "Annual Plan",
     price: 9.99,
-    currency: 'eur',
-    interval: 'year',
+    currency: "eur",
+    interval: "year",
   },
 };
 
@@ -28,48 +26,42 @@ export const createCheckoutSession = async (
   userId: string,
   email: string
 ) => {
-  try {
-    // Use Supabase Edge Function endpoint
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const endpoint = `${supabaseUrl}/functions/v1/create-checkout-session`;
+  // Use Supabase Edge Function endpoint
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const endpoint = `${supabaseUrl}/functions/v1/create-checkout-session`;
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({
-        priceId,
-        userId,
-        email,
-      }),
-    });
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({
+      priceId,
+      userId,
+      email,
+    }),
+  });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to create checkout session');
-    }
-
-    const json = await response.json();
-    // Prefer the full session URL (contains required init params); fall back to sessionId
-    return json.sessionUrl || json.sessionId;
-  } catch (error) {
-    console.error('Error creating checkout session:', error);
-    throw error;
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to create checkout session");
   }
+
+  const json = await response.json();
+  // Prefer the full session URL (contains required init params); fall back to sessionId
+  return json.sessionUrl || json.sessionId;
 };
 
-export const redirectToCheckout = async (
-  sessionRef: string
-) => {
-  if (!sessionRef) throw new Error('No session reference provided');
+export const redirectToCheckout = async (sessionRef: string) => {
+  if (!sessionRef) throw new Error("No session reference provided");
 
   // If the function returned a full URL, use it. Otherwise treat as sessionId.
-  const checkoutUrl = sessionRef.startsWith('http')
+  const checkoutUrl = sessionRef.startsWith("http")
     ? sessionRef
     : `https://checkout.stripe.com/pay/${sessionRef}`;
 
-  console.log('Redirecting to Stripe Checkout:', checkoutUrl);
-  setTimeout(() => { window.location.href = checkoutUrl; }, 100);
+  setTimeout(() => {
+    window.location.href = checkoutUrl;
+  }, 100);
 };

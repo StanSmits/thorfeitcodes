@@ -53,7 +53,7 @@ export default function Settings() {
           applyCustomThemeStyles(colors);
         }
       } catch (e) {
-        console.error('Failed to load custom colors:', e);
+        
       }
     }
   }, [theme]);

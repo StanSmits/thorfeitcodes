@@ -35,7 +35,7 @@ function setRateLimit(key: string, count: number, resetAt: number): void {
   try {
     localStorage.setItem(key, JSON.stringify({ count, resetAt }));
   } catch {
-    console.warn('Failed to set rate limit in localStorage');
+    
   }
 }
 

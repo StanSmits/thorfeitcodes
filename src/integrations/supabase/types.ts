@@ -191,6 +191,54 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_history: {
+        Row: {
+          amount_paid: number | null
+          created_at: string | null
+          currency: string | null
+          due_date: string | null
+          failure_reason: string | null
+          id: string
+          paid_at: string | null
+          payment_date: string | null
+          payment_status: string | null
+          stripe_invoice_id: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_paid?: number | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          failure_reason?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_paid?: number | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          failure_reason?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           backup_codes: Json | null
@@ -364,6 +412,72 @@ export type Database = {
           },
         ]
       }
+      settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: boolean
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: boolean
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: boolean
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          current_plan: string | null
+          id: string
+          next_renewal_date: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_ends_at: string | null
+          subscription_started_at: string | null
+          subscription_status: string | null
+          total_paid_amount: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          current_plan?: string | null
+          id?: string
+          next_renewal_date?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_ends_at?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
+          total_paid_amount?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          current_plan?: string | null
+          id?: string
+          next_renewal_date?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_ends_at?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
+          total_paid_amount?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -409,6 +523,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      get_app_settings: { Args: never; Returns: Json }
       get_effective_role_for_current_user: { Args: never; Returns: string }
       get_old_role: {
         Args: { uid: string }
@@ -461,10 +576,6 @@ export type Database = {
       verify_backup_code: {
         Args: { p_code: string; p_user: string }
         Returns: boolean
-      }
-      get_app_settings: {
-        Args: never
-        Returns: { [key: string]: boolean }
       }
     }
     Enums: {

@@ -52,7 +52,7 @@ export function useSubscription() {
           setSubscription(data as Subscription);
         }
       } catch (err) {
-        console.error('Error fetching subscription:', err);
+        
         setError(err instanceof Error ? err.message : 'Failed to fetch subscription');
       } finally {
         setLoading(false);

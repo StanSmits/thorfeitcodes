@@ -67,7 +67,7 @@ export function SubscriptionPlans({
       await redirectToCheckout(sessionId);
       onSubscriptionComplete?.();
     } catch (error) {
-      console.error("Subscription error:", error);
+      
       toast({
         title: "Fout",
         description:

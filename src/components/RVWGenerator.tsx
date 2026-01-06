@@ -114,7 +114,7 @@ export function RVWGenerator({
           .in("sign_code", toFetch);
 
         if (exactError) {
-          console.error("Failed to fetch exact sign matches", exactError);
+          
           return;
         }
 
@@ -146,7 +146,7 @@ export function RVWGenerator({
             .or(orQuery);
 
           if (ilikeError) {
-            console.error("Failed to fetch ilike sign matches", ilikeError);
+            
           } else {
             (ilikeData || []).forEach((s: any) => {
               if (s?.sign_code) {
@@ -159,7 +159,7 @@ export function RVWGenerator({
 
         setSignsMap(map);
       } catch (err) {
-        console.error("Error fetching signs", err);
+        
       }
     };
 
@@ -185,7 +185,7 @@ export function RVWGenerator({
         .limit(50); // Get more to find unique locations
 
       if (error) {
-        console.error("Failed to fetch recent RvWs", error);
+        
         return;
       }
 
@@ -201,7 +201,7 @@ export function RVWGenerator({
       const uniqueLocations = Array.from(locationMap.values()).slice(0, 3);
       setRecentRvws(uniqueLocations);
     } catch (err) {
-      console.error("Error fetching recent RvWs", err);
+      
     }
   }, [factcode.factcode, factcode.location_field]);
 
@@ -408,7 +408,7 @@ export function RVWGenerator({
             .maybeSingle();
 
           if (existingError) {
-            console.error("Failed to query existing saved RvW", existingError);
+            
           }
 
           if (existing && existing.id) {
@@ -422,7 +422,7 @@ export function RVWGenerator({
                 })
                 .eq("id", existing.id);
             } catch (err) {
-              console.error("Failed to update existing saved RvW", err);
+              
             }
           } else {
             await supabase.from("saved_rvws").insert({
@@ -434,7 +434,7 @@ export function RVWGenerator({
             });
           }
         } catch (err) {
-          console.error("Failed to save RvW", err);
+          
         }
       }
     }
@@ -465,7 +465,7 @@ export function RVWGenerator({
           setRecentRvws(data || []);
         }
       } catch (err) {
-        console.error("Failed to update timestamp", err);
+        
       }
 
       toast({

@@ -56,7 +56,7 @@ export default function SavedRvws() {
       queryClient.invalidateQueries({ queryKey: ["saved-rvws"] });
     },
     onError: (err) => {
-      console.error("Failed to delete saved RvW", err);
+      
       toast({
         title: "Fout",
         description: "Kon opgeslagen RvW niet verwijderen.",
@@ -129,7 +129,7 @@ export default function SavedRvws() {
         .update({ created_at: new Date().toISOString() })
         .eq("id", rvw.id);
     } catch (err) {
-      console.error("Failed to update timestamp", err);
+      
     }
 
     // Navigate to the generator page with prefilled form values

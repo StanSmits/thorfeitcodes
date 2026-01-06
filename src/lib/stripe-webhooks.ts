@@ -45,7 +45,7 @@ export function verifyStripeWebhookSignature(
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     return event as StripeWebhookEvent;
   } catch (error) {
-    console.error('Webhook signature verification failed:', error);
+    
     return null;
   }
 }
@@ -65,7 +65,7 @@ export async function handleSubscriptionCreated(
   const userId = (customer.metadata?.['user_id']) as string;
 
   if (!userId) {
-    console.error('Could not find user ID for customer:', customerId);
+    
     return;
   }
 
@@ -86,7 +86,7 @@ export async function handleSubscriptionCreated(
       : null,
   });
 
-  console.log(`Subscription created for user ${userId}: ${subscription.id}`);
+  
 }
 
 /**
@@ -102,7 +102,7 @@ export async function handleSubscriptionUpdated(
   const userId = (customer.metadata?.['user_id']) as string;
 
   if (!userId) {
-    console.error('Could not find user ID for customer:', customerId);
+    
     return;
   }
 
@@ -120,7 +120,7 @@ export async function handleSubscriptionUpdated(
       : null,
   });
 
-  console.log(`Subscription updated for user ${userId}: ${subscription.id}`);
+  
 }
 
 /**
@@ -136,7 +136,7 @@ export async function handleSubscriptionDeleted(
   const userId = (customer.metadata?.['user_id']) as string;
 
   if (!userId) {
-    console.error('Could not find user ID for customer:', customerId);
+    
     return;
   }
 
@@ -147,7 +147,7 @@ export async function handleSubscriptionDeleted(
     subscription_ends_at: null,
   });
 
-  console.log(`Subscription cancelled for user ${userId}: ${subscription.id}`);
+  
 }
 
 /**
@@ -163,7 +163,7 @@ export async function handleInvoicePaymentSucceeded(
   const userId = (customer.metadata?.['user_id']) as string;
 
   if (!userId) {
-    console.error('Could not find user ID for customer:', customerId);
+    
     return;
   }
 
@@ -174,7 +174,7 @@ export async function handleInvoicePaymentSucceeded(
     paid_at: invoice.paid_date ? new Date(invoice.paid_date * 1000) : null,
   });
 
-  console.log(`Payment succeeded for user ${userId}: ${invoice.id}`);
+  
 }
 
 /**
@@ -190,7 +190,7 @@ export async function handleInvoicePaymentFailed(
   const userId = (customer.metadata?.['user_id']) as string;
 
   if (!userId) {
-    console.error('Could not find user ID for customer:', customerId);
+    
     return;
   }
 
@@ -201,5 +201,5 @@ export async function handleInvoicePaymentFailed(
     failure_reason: invoice.last_finalization_error?.message || 'Unknown error',
   });
 
-  console.log(`Payment failed for user ${userId}: ${invoice.id}`);
+  
 }

@@ -22,7 +22,7 @@ export default function Success() {
         await new Promise(resolve => setTimeout(resolve, 2000));
         setVerifying(false);
       } catch (error) {
-        console.error('Error verifying session:', error);
+        
         setVerifying(false);
       }
     };

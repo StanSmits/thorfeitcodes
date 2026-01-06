@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setRoles(mapped || []);
     } catch (error) {
-      console.error('Error fetching roles:', error);
+      
       setRoles([]);
     }
   }, []);
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRoles([]);
       }
     } catch (error) {
-      console.error('Error refreshing user/session:', error);
+      
     }
   }, [fetchUserRoles]);
 
