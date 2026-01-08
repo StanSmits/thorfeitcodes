@@ -1,15 +1,18 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Search, FileText, Book, Settings, Star } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { cn } from '@/lib/utils';
 
 export function MobileBottomNav() {
   const { isModerator } = useAuth();
   const location = useLocation();
+  const { isSubscriptionEnabled, canAccessFavorites } = useSubscriptionAccess();
 
   const navigation = [
     { name: 'Zoeken', href: '/', icon: Search },
-    { name: 'Favorieten', href: '/favorieten', icon: Star },
+    // Only show Favorites if subscriptions are disabled OR user has access
+    ...(!isSubscriptionEnabled || canAccessFavorites ? [{ name: 'Favorieten', href: '/favorieten', icon: Star }] : []),
     { name: 'Opgeslagen', href: '/opgeslagen', icon: FileText },
     { name: 'Kennisbank', href: '/kennisbank', icon: Book },
     ...(isModerator ? [{ name: 'Beheer', href: '/admin', icon: Settings }] : []),

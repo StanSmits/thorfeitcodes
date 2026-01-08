@@ -27,10 +27,11 @@ import {
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
-import { CalendarIcon, X, FileText, ChevronRight, Trash } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { CalendarIcon, X, FileText, ChevronRight, Trash, Lock, Crown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { SkeletonListItem } from "@/components/ui/SkeletonCard";
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 
 export default function SavedRvws() {
   const [factcodeFilter, setFactcodeFilter] = useState<string>("all");
@@ -39,6 +40,7 @@ export default function SavedRvws() {
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isSubscriptionEnabled, canAccessSavedRvws, isSubscriber } = useSubscriptionAccess();
 
   const deleteMutation = useMutation({
     mutationFn: async (id: any) => {
@@ -76,6 +78,8 @@ export default function SavedRvws() {
       if (error) throw error;
       return data;
     },
+    // Only fetch if user has access
+    enabled: !isSubscriptionEnabled || canAccessSavedRvws,
   });
 
   const uniqueFactcodes = useMemo(() => {
@@ -149,6 +153,44 @@ export default function SavedRvws() {
 
   const hasActiveFilters =
     factcodeFilter !== "all" || locationFilter !== "" || dateFrom || dateTo;
+
+  // Show subscriber-only message if subscriptions are enabled and user is not a subscriber
+  if (isSubscriptionEnabled && !canAccessSavedRvws) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Opgeslagen RvW's</h1>
+          <p className="text-muted-foreground">
+            Bekijk en filter alle opgeslagen redenen van wetenschap
+          </p>
+        </div>
+
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-6">
+              <Lock className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Alleen voor abonnees</h2>
+            <p className="text-muted-foreground text-center max-w-md mb-6">
+              Met een premium abonnement kunt u onbeperkt redenen van wetenschap opslaan 
+              en later opnieuw gebruiken. Upgrade nu om toegang te krijgen tot deze functie.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button asChild>
+                <Link to="/pricing" className="gap-2">
+                  <Crown className="h-4 w-4" />
+                  Bekijk abonnementen
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/">Terug naar zoeken</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">

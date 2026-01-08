@@ -22,12 +22,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search as SearchIcon, FileText, Plus, X, Clock, Star } from "lucide-react";
+import { Search as SearchIcon, FileText, Plus, X, Clock, Star, Lock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
+import { SubscriberOnlyDialog } from "@/components/SubscriberOnlyDialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -36,10 +43,12 @@ export default function Search() {
     (searchParams.get('view') as "popular" | "newest" | "all") || "popular"
   );
   const [showHistory, setShowHistory] = useState(false);
+  const [showSubscriberDialog, setShowSubscriberDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { history, addToHistory, removeFromHistory } = useSearchHistory();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { isSubscriptionEnabled, canAccessFavorites, remaining } = useSubscriptionAccess();
 
   // Sync search term and view mode to URL
   useEffect(() => {
@@ -161,6 +170,21 @@ export default function Search() {
       state: { searchQuery: searchTerm || null } 
     });
   };
+
+  const handleFavoriteClick = (e: React.MouseEvent, codeId: string) => {
+    e.stopPropagation();
+    
+    // If subscriptions are enabled and user can't access favorites, show dialog
+    if (isSubscriptionEnabled && !canAccessFavorites) {
+      setShowSubscriberDialog(true);
+      return;
+    }
+    
+    toggleFavorite(codeId);
+  };
+
+  // Whether to show favorite buttons at all
+  const showFavorites = !isSubscriptionEnabled || canAccessFavorites;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -353,17 +377,33 @@ export default function Search() {
                 <Card
                   className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300 relative"
                 >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 z-10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(code.id);
-                    }}
-                  >
-                    <Star className={`h-4 w-4 ${isFavorite(code.id) ? 'fill-favorite text-favorite' : 'text-muted-foreground'}`} />
-                  </Button>
+                  {/* Show favorite button - with lock for non-subscribers when enabled */}
+                  {showFavorites ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 z-10"
+                      onClick={(e) => handleFavoriteClick(e, code.id)}
+                    >
+                      <Star className={`h-4 w-4 ${isFavorite(code.id) ? 'fill-favorite text-favorite' : 'text-muted-foreground'}`} />
+                    </Button>
+                  ) : isSubscriptionEnabled ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 z-10 opacity-50"
+                          onClick={(e) => handleFavoriteClick(e, code.id)}
+                        >
+                          <Lock className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Alleen voor abonnees</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : null}
                   <div onClick={() => handleCardClick(code.factcode)}>
                     <CardHeader>
                       <CardTitle className="text-lg pr-8">{code.factcode}</CardTitle>
@@ -384,6 +424,14 @@ export default function Search() {
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* Subscriber-only dialog for favorites */}
+      <SubscriberOnlyDialog
+        open={showSubscriberDialog}
+        onOpenChange={setShowSubscriberDialog}
+        feature="favorites"
+        remaining={remaining}
+      />
     </div>
   );
 }

@@ -1,16 +1,18 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Star, FileText } from 'lucide-react';
+import { Star, FileText, Lock, Crown } from 'lucide-react';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 
 export default function Favorites() {
   const { favorites, toggleFavorite } = useFavorites();
   const navigate = useNavigate();
+  const { isSubscriptionEnabled, canAccessFavorites } = useSubscriptionAccess();
 
   const { data: feitcodes, isLoading } = useQuery({
     queryKey: ['favorite-feitcodes', favorites],
@@ -23,12 +25,50 @@ export default function Favorites() {
       if (error) throw error;
       return data;
     },
-    enabled: favorites.length > 0,
+    enabled: favorites.length > 0 && (!isSubscriptionEnabled || canAccessFavorites),
   });
 
   const handleCardClick = (factcode: string) => {
     navigate(`/generator/${factcode}`);
   };
+
+  // Show subscriber-only message if subscriptions are enabled and user is not a subscriber
+  if (isSubscriptionEnabled && !canAccessFavorites) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Mijn Favorieten</h1>
+          <p className="text-muted-foreground">
+            Jouw opgeslagen favoriete feitcodes
+          </p>
+        </div>
+
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-6">
+              <Lock className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Alleen voor abonnees</h2>
+            <p className="text-muted-foreground text-center max-w-md mb-6">
+              Met een premium abonnement kunt u onbeperkt feitcodes als favoriet markeren 
+              en ze snel terugvinden. Upgrade nu om toegang te krijgen tot deze functie.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button asChild>
+                <Link to="/pricing" className="gap-2">
+                  <Crown className="h-4 w-4" />
+                  Bekijk abonnementen
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/">Terug naar zoeken</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">

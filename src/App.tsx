@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { SubscriptionProvider } from "./hooks/useSubscription";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AppSettingsGate } from "./components/AppSettingsGate";
 import { Layout } from "./components/Layout";
@@ -133,13 +134,15 @@ const App = () => (
     >
       <AppSettingsGate>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AnimatedRoutes />
-            </BrowserRouter>
-          </TooltipProvider>
+          <SubscriptionProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <AnimatedRoutes />
+              </BrowserRouter>
+            </TooltipProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </AppSettingsGate>
     </ThemeProvider>

@@ -283,22 +283,22 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="profile">
-            <User className="h-4 w-4 mr-2" />
-            Profiel
+        <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
+          <TabsTrigger value="profile" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3 py-2 flex items-center justify-center gap-1 sm:gap-2">
+            <User className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Profiel</span>
           </TabsTrigger>
-          <TabsTrigger value="appearance">
-            <Palette className="h-4 w-4 mr-2" />
-            Uiterlijk
+          <TabsTrigger value="appearance" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3 py-2 flex items-center justify-center gap-1 sm:gap-2">
+            <Palette className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Uiterlijk</span>
           </TabsTrigger>
-          <TabsTrigger value="security">
-            <Lock className="h-4 w-4 mr-2" />
-            Beveiliging
+          <TabsTrigger value="security" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3 py-2 flex items-center justify-center gap-1 sm:gap-2">
+            <Lock className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Beveiliging</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications">
-            <Bell className="h-4 w-4 mr-2" />
-            Notificaties
+          <TabsTrigger value="notifications" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3 py-2 flex items-center justify-center gap-1 sm:gap-2">
+            <Bell className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Notificaties</span>
           </TabsTrigger>
         </TabsList>
 

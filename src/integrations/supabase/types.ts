@@ -191,6 +191,54 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_history: {
+        Row: {
+          amount_paid: number | null
+          created_at: string | null
+          currency: string | null
+          due_date: string | null
+          failure_reason: string | null
+          id: string
+          paid_at: string | null
+          payment_date: string | null
+          payment_status: string | null
+          stripe_invoice_id: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_paid?: number | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          failure_reason?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_paid?: number | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string | null
+          failure_reason?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           backup_codes: Json | null
@@ -201,6 +249,7 @@ export type Database = {
           id: string
           last_sign_in: string | null
           role: Database["public"]["Enums"]["user_role"]
+          stripe_customer_id: string | null
           subscription_expires_at: string | null
           subscription_plan:
             | Database["public"]["Enums"]["subscription_plan_enum"]
@@ -217,6 +266,7 @@ export type Database = {
           id: string
           last_sign_in?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          stripe_customer_id?: string | null
           subscription_expires_at?: string | null
           subscription_plan?:
             | Database["public"]["Enums"]["subscription_plan_enum"]
@@ -233,12 +283,43 @@ export type Database = {
           id?: string
           last_sign_in?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          stripe_customer_id?: string | null
           subscription_expires_at?: string | null
           subscription_plan?:
             | Database["public"]["Enums"]["subscription_plan_enum"]
             | null
           subscription_status?: Database["public"]["Enums"]["subscription_status_enum"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          action_count: number
+          action_date: string
+          action_type: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_count?: number
+          action_date?: string
+          action_type?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_count?: number
+          action_date?: string
+          action_type?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -364,6 +445,24 @@ export type Database = {
           },
         ]
       }
+      settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: boolean
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: boolean
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: boolean
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -409,6 +508,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      get_app_settings: { Args: never; Returns: Json }
       get_effective_role_for_current_user: { Args: never; Returns: string }
       get_old_role: {
         Args: { uid: string }
@@ -418,9 +518,43 @@ export type Database = {
         Args: { p_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_rate_limit_status: {
+        Args: { p_action_type?: string; p_user_id: string }
+        Returns: {
+          current_count: number
+          daily_limit: number
+          remaining: number
+          reset_at: string
+        }[]
+      }
+      get_usage_trends: {
+        Args: { p_days?: number }
+        Returns: {
+          free_user_actions: number
+          subscriber_actions: number
+          total_actions: number
+          unique_users: number
+          usage_date: string
+        }[]
+      }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      get_user_usage_stats: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          last_sign_in: string
+          role: string
+          subscription_expires_at: string
+          subscription_plan: string
+          subscription_status: string
+          today_usage: number
+          user_id: string
+        }[]
       }
       hard_delete_user: { Args: { target_user: string }; Returns: undefined }
       has_role: {
@@ -432,6 +566,13 @@ export type Database = {
       }
       hook_restrict_signup_amsterdam: { Args: { event: Json }; Returns: Json }
       increment_access_count: { Args: { item_id: string }; Returns: undefined }
+      increment_rate_limit: {
+        Args: { p_action_type?: string; p_user_id: string }
+        Returns: {
+          limit_reached: boolean
+          new_count: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_moderator_or_above: { Args: never; Returns: boolean }
       list_user_sessions: {
@@ -461,10 +602,6 @@ export type Database = {
       verify_backup_code: {
         Args: { p_code: string; p_user: string }
         Returns: boolean
-      }
-      get_app_settings: {
-        Args: never
-        Returns: { [key: string]: boolean }
       }
     }
     Enums: {

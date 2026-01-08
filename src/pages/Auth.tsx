@@ -20,6 +20,7 @@ import { TwoFactorDialog } from "@/components/TwoFactorDialog";
 import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
+import { invalidateSubscriptionCache, useSubscription } from "@/hooks/useSubscription";
 
 // Validation schemas
 const emailSchema = z
@@ -73,6 +74,7 @@ const signUpSchema = z.object({
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { invalidateAndRefresh } = useSubscription();
   const [checkingSession, setCheckingSession] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -84,6 +86,13 @@ export default function Auth() {
   const [mfaUserId, setMfaUserId] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState("signin");
+
+  const navigateAfterLogin = async () => {
+    // Invalidate cache and refresh subscription before navigating
+    invalidateSubscriptionCache();
+    await invalidateAndRefresh();
+    navigate("/");
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -151,7 +160,7 @@ export default function Auth() {
         title: "Ingelogd",
         description: "U bent succesvol ingelogd.",
       });
-      navigate("/");
+      await navigateAfterLogin();
     } catch (error: any) {
       toast({
         title: "Fout bij inloggen",
@@ -203,7 +212,7 @@ export default function Auth() {
       });
       
       setShowTwoFactor(false);
-      navigate("/");
+      await navigateAfterLogin();
       return true;
     } catch (error: any) {
       toast({

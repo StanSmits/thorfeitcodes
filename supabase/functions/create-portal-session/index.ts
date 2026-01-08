@@ -1,3 +1,6 @@
+// Stripe Customer Portal session creator
+// Allows subscribers to manage their billing and cancel subscriptions
+
 import Stripe from "https://esm.sh/stripe@13.10.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -8,10 +11,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-interface CreateCheckoutRequest {
-  priceId: string;
+interface CreatePortalRequest {
   userId: string;
-  email: string;
 }
 
 Deno.serve(async (req) => {
@@ -57,12 +58,12 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { priceId, userId, email } = (await req.json()) as CreateCheckoutRequest;
+    const { userId } = (await req.json()) as CreatePortalRequest;
 
     // Validate input
-    if (!priceId || !userId || !email) {
+    if (!userId) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: priceId, userId, email" }),
+        JSON.stringify({ error: "Missing required field: userId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -90,67 +91,41 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get or create Stripe customer
-    let customerId: string | null = null;
-
-    // Check if user already has a Stripe customer ID in profiles
-    const { data: profile } = await supabase
+    // Get user's Stripe customer ID from profiles table
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("stripe_customer_id")
       .eq("id", userId)
       .single();
 
-    if (profile?.stripe_customer_id) {
-      customerId = profile.stripe_customer_id;
-    } else {
-      // Create new Stripe customer
-      const customer = await stripe.customers.create({
-        email,
-        metadata: {
-          user_id: userId,
-        },
-      });
-      customerId = customer.id;
-
-      // Store customer ID in profiles table
-      await supabase
-        .from("profiles")
-        .update({ stripe_customer_id: customerId })
-        .eq("id", userId);
+    if (profileError || !profile?.stripe_customer_id) {
+      return new Response(
+        JSON.stringify({ error: "No subscription found for this user" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Get the public URL for the app (for success/cancel redirects)
-    const appUrl = Deno.env.get("APP_URL") || "http://localhost:5173";
-    const successUrl = `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${appUrl}/pricing`;
+    const stripeCustomerId = profile.stripe_customer_id;
 
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: {
-        user_id: userId,
-      },
+    // Get the public URL for the app (for return redirect)
+    const appUrl = Deno.env.get("APP_URL") || "https://jsptozrmlibvxzfkvrec.lovableproject.com";
+    const returnUrl = `${appUrl}/settings`;
+
+    // Create Stripe Customer Portal session
+    const session = await stripe.billingPortal.sessions.create({
+      customer: stripeCustomerId,
+      return_url: returnUrl,
     });
 
-    // Return session ID and full session URL if available
     return new Response(
-      JSON.stringify({ sessionId: session.id, sessionUrl: (session.url || null) }),
+      JSON.stringify({ url: session.url }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (error) {
-    console.error("Error creating checkout session:", error);
+    console.error("Error creating portal session:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",

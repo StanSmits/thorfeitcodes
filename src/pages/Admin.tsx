@@ -6,10 +6,11 @@ import { AdminFeitcodes } from '@/components/admin/AdminFeitcodes';
 import { AdminSuggestions } from '@/components/admin/AdminSuggestions';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminRoadSigns } from '@/components/admin/AdminRoadSigns';
+import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
 export default function Admin() {
   const { isModerator, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState('feitcodes');
+  const [activeTab, setActiveTab] = useState(isAdmin ? 'dashboard' : 'feitcodes');
   const [prefillData, setPrefillData] = useState<any>(null);
 
   if (!isModerator) {
@@ -35,13 +36,20 @@ export default function Admin() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue={isAdmin ? 'dashboard' : 'feitcodes'} className="w-full">
         <TabsList className="w-full flex-wrap h-auto">
+          {isAdmin && <TabsTrigger value="dashboard">Dashboard</TabsTrigger>}
           <TabsTrigger value="feitcodes">Feitcodes</TabsTrigger>
           <TabsTrigger value="suggestions">Suggesties</TabsTrigger>
           <TabsTrigger value="road-signs">Verkeerstekens</TabsTrigger>
           {isAdmin && <TabsTrigger value="users">Gebruikers</TabsTrigger>}
         </TabsList>
+
+        {isAdmin && (
+          <TabsContent value="dashboard" className="mt-6">
+            <AdminDashboard />
+          </TabsContent>
+        )}
 
         <TabsContent value="feitcodes" className="mt-6">
           <AdminFeitcodes prefillData={prefillData} onClearPrefill={() => setPrefillData(null)} />

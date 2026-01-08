@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Copy, Check, HelpCircle, ChevronRight } from "lucide-react";
+import { ArrowLeft, Copy, Check, HelpCircle, ChevronRight, Lock } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { deepEqual } from "@/lib/utils";
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
+import { SubscriberOnlyDialog } from "@/components/SubscriberOnlyDialog";
 
 interface RVWGeneratorProps {
   factcode: any;
@@ -47,6 +49,11 @@ export function RVWGenerator({
   >("geen_bestuurder");
   const [andersText, setAndersText] = useState<string>("");
   const previewTimeout = useRef<number | null>(null);
+  
+  // Subscription and rate limiting
+  const { isSubscriptionEnabled, hasUnlimitedAccess, checkAndIncrementUsage } = useSubscriptionAccess();
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [remainingCopies, setRemainingCopies] = useState<number | undefined>(undefined);
   // Map keyed by lowercased sign_code -> sign record
   const [signsMap, setSignsMap] = useState<Record<string, any>>({});
   // Hover preview state (positioned near cursor)
@@ -367,6 +374,17 @@ export function RVWGenerator({
   }, [locationSearchOpen]);
 
   const handleCopy = async () => {
+    // Check rate limit for non-subscribers when subscriptions are enabled
+    if (isSubscriptionEnabled && !hasUnlimitedAccess) {
+      const result = await checkAndIncrementUsage();
+      if (!result.allowed) {
+        setRemainingCopies(0);
+        setShowUpgradeDialog(true);
+        return;
+      }
+      setRemainingCopies(result.remaining);
+    }
+    
     // Copy the text as-is (placeholders will remain if fields are unfilled)
     const cleanText = fullGeneratedText;
     navigator.clipboard.writeText(cleanText);
@@ -383,9 +401,9 @@ export function RVWGenerator({
     });
     setTimeout(() => setCopied(false), 2000);
 
-    // Save the RvW if location field is configured
+    // Save the RvW if location field is configured (only for subscribers or when subscriptions disabled)
     const locationField = factcode.location_field;
-    if (locationField) {
+    if (locationField && (hasUnlimitedAccess || !isSubscriptionEnabled)) {
       const locationValue = formValues[locationField];
       if (locationValue && locationValue.trim() !== "") {
         try {
@@ -396,7 +414,6 @@ export function RVWGenerator({
           const userId = user?.id || null;
 
           // Check if this exact generated RvW already exists for this user and factcode.
-          // If so, update its timestamp and form_values instead of inserting a new row.
           const { data: existing, error: existingError } = await supabase
             .from("saved_rvws")
             .select("id")
@@ -949,7 +966,22 @@ export function RVWGenerator({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="relative min-h-[300px] rounded-md border border-border bg-background p-4">
+            <div 
+              className={`relative min-h-[300px] rounded-md border border-border bg-background p-4 ${
+                isSubscriptionEnabled && !hasUnlimitedAccess ? 'select-none' : ''
+              }`}
+              onCopy={(e) => {
+                // Prevent Ctrl+C for free users when subscriptions are enabled
+                if (isSubscriptionEnabled && !hasUnlimitedAccess) {
+                  e.preventDefault();
+                  toast({
+                    title: "Kopiëren beperkt",
+                    description: "Gebruik de kopieer knop om de tekst te kopiëren.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
               {renderGeneratedTextWithHighlights()}
               <br />
               {reasonPrefix && (
@@ -1096,6 +1128,14 @@ export function RVWGenerator({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Upgrade dialog for rate-limited users */}
+      <SubscriberOnlyDialog
+        open={showUpgradeDialog}
+        onOpenChange={setShowUpgradeDialog}
+        feature="generator"
+        remaining={remainingCopies}
+      />
     </div>
   );
 }

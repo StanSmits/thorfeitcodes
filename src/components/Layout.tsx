@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { Button } from '@/components/ui/button';
 import { Shield, Search, Book, FileText, Settings, Star } from 'lucide-react';
 import { UserProfileDropdown } from '@/components/UserProfileDropdown';
@@ -17,13 +18,17 @@ interface LayoutProps {
 export function Layout({ children, showForAnonymous = false }: LayoutProps) {
   const { user, isModerator } = useAuth();
   const location = useLocation();
+  const { isSubscriptionEnabled, canAccessFavorites, canAccessSavedRvws } = useSubscriptionAccess();
   
   // Enable global Ctrl+K shortcut
   useGlobalKeyboardShortcuts();
 
+  // Build navigation based on subscription access
   const navigation = [
     { name: 'Zoeken', href: '/', icon: Search },
-    { name: 'Favorieten', href: '/favorieten', icon: Star },
+    // Only show Favorites if subscriptions are disabled OR user has access
+    ...(!isSubscriptionEnabled || canAccessFavorites ? [{ name: 'Favorieten', href: '/favorieten', icon: Star }] : []),
+    // Show Opgeslagen but it will show a message for non-subscribers
     { name: 'Opgeslagen', href: '/opgeslagen', icon: FileText },
     { name: 'Kennisbank', href: '/kennisbank', icon: Book },
   ];

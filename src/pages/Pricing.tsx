@@ -3,16 +3,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { useSubscription } from '@/hooks/useSubscription';
 import { SubscriptionPlans } from '@/components/SubscriptionPlans';
+import { CustomerPortalButton } from '@/components/CustomerPortalButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Layout } from '@/components/Layout';
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Pricing() {
   const { user } = useAuth();
-  const { subscription, isSubscribed, currentPlan, loading } = useSubscription();
+  const { subscription, isSubscribed, currentPlan, currentPeriodEnd, cancelAtPeriodEnd, loading } = useSubscription();
   const location = useLocation();
 
   // If user is not signed in, redirect to auth page (preserve return path)
@@ -66,9 +66,60 @@ export default function Pricing() {
             {/* Main content */}
             <div className="lg:col-span-2">
               {loading ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">Laden...</p>
-                </div>
+                <Card className="max-w-3xl mx-auto">
+                  <CardHeader>
+                    <Skeleton className="h-8 w-64 mb-2" />
+                    <Skeleton className="h-4 w-48" />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </CardContent>
+                </Card>
+              ) : isSubscribed ? (
+                // Show subscriber-only view without plan switching
+                <Card className="max-w-3xl mx-auto border-green-200 dark:border-green-800">
+                  <CardHeader>
+                    <CardTitle className="text-green-700 dark:text-green-300">
+                      U bent al abonnee! 🎉
+                    </CardTitle>
+                    <CardDescription>
+                      U heeft toegang tot alle premium functies
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="bg-muted p-4 rounded-lg space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Huidig plan</span>
+                        <span className="font-semibold">
+                          {currentPlan === 'monthly' ? 'Maandelijks' : 'Jaarlijks'}
+                        </span>
+                      </div>
+                      {currentPeriodEnd && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            {cancelAtPeriodEnd ? 'Eindigt op' : 'Volgende verlenging'}
+                          </span>
+                          <span className="font-semibold">
+                            {new Date(currentPeriodEnd).toLocaleDateString('nl-NL', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <CustomerPortalButton className="w-full" variant="default" />
+                      <p className="text-xs text-muted-foreground text-center">
+                        Beheer uw betaalmethode, bekijk facturen of annuleer uw abonnement
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : (
                 <SubscriptionPlans
                   userId={user?.id}
@@ -80,34 +131,7 @@ export default function Pricing() {
 
             {/* Sidebar */}
             <div className="space-y-4">
-              {/* Current subscription status */}
-              {isSubscribed && subscription && (
-                <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
-                  <CardHeader>
-                    <CardTitle className="text-green-900 dark:text-green-100">
-                      Actief abonnement
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-green-800 dark:text-green-200">
-                    <div>
-                      <span className="font-semibold">Plan:</span>{' '}
-                      {currentPlan === 'monthly' ? 'Maandelijks' : 'Jaarlijks'}
-                    </div>
-                    {subscription.next_renewal_date && (
-                      <div>
-                        <span className="font-semibold">Volgende verlenging:</span>{' '}
-                        {new Date(subscription.next_renewal_date).toLocaleDateString('nl-NL')}
-                      </div>
-                    )}
-                    <div>
-                      <span className="font-semibold">Status:</span>{' '}
-                      <span className="capitalize">
-                        {subscription.subscription_status === 'active' ? 'Actief' : subscription.subscription_status}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              {/* FAQ and Support cards only - subscription status already shown in main content */}
 
               {/* FAQ Section */}
               <Card>
@@ -115,12 +139,6 @@ export default function Pricing() {
                   <CardTitle>Veelgestelde vragen</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
-                  <div>
-                    <h4 className="font-semibold mb-1">Kan ik upgraden/downgraden?</h4>
-                    <p className="text-muted-foreground">
-                      Ja, u kunt op elk moment van plan wisselen. De wijziging gaat per direct in.
-                    </p>
-                  </div>
                   <div>
                     <h4 className="font-semibold mb-1">Kan ik mijn abonnement opzeggen?</h4>
                     <p className="text-muted-foreground">
@@ -146,7 +164,7 @@ export default function Pricing() {
                     Als u vragen heeft over uw abonnement, neem dan contact met ons op.
                   </p>
                   <Button asChild variant="outline" className="w-full" size="sm">
-                    <Link to="/settings">Contact opnemen</Link>
+                    <a href={`mailto:rvw@stansmits.nl?subject=Contact%20in%20verband%20met%20abonnement&body=${user?.id}`}>Contact opnemen</a>
                   </Button>
                 </CardContent>
               </Card>

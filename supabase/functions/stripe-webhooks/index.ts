@@ -87,26 +87,19 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Extract plan information
-        const item = subscription.items.data[0];
-        const priceId = item.price.id;
-        const plan = priceId.includes("monthly") ? "monthly" : "yearly";
-
-        // Update subscription in database
-        await supabase.from("subscriptions").upsert({
-          user_id: userId,
-          stripe_customer_id: customerId,
-          stripe_subscription_id: subscription.id,
-          subscription_status: "active",
-          current_plan: plan,
-          subscription_started_at: new Date(subscription.start_date * 1000),
-          subscription_ends_at: subscription.current_period_end
-            ? new Date(subscription.current_period_end * 1000)
-            : null,
-          next_renewal_date: subscription.current_period_end
-            ? new Date(subscription.current_period_end * 1000)
-            : null,
-        });
+        // Update profiles table with subscription data
+        await supabase
+          .from("profiles")
+          .update({
+            stripe_customer_id: customerId,
+            subscription_status: "active",
+            subscription_plan: "pro",
+            subscription_expires_at: subscription.current_period_end
+              ? new Date(subscription.current_period_end * 1000).toISOString()
+              : null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", userId);
 
         console.log(`Subscription created for user ${userId}`);
         break;
@@ -125,26 +118,21 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Extract plan information
-        const item = subscription.items.data[0];
-        const priceId = item.price.id;
-        const plan = priceId.includes("monthly") ? "monthly" : "yearly";
+        // Map Stripe status to our enum
+        const status = subscription.status === "active" ? "active" : 
+                       subscription.status === "canceled" ? "cancelled" : "inactive";
 
-        // Update subscription in database
+        // Update profiles table with subscription data
         await supabase
-          .from("subscriptions")
+          .from("profiles")
           .update({
-            subscription_status: subscription.status as string,
-            current_plan: plan,
-            subscription_ends_at: subscription.current_period_end
-              ? new Date(subscription.current_period_end * 1000)
+            subscription_status: status,
+            subscription_expires_at: subscription.current_period_end
+              ? new Date(subscription.current_period_end * 1000).toISOString()
               : null,
-            next_renewal_date: subscription.current_period_end
-              ? new Date(subscription.current_period_end * 1000)
-              : null,
-            updated_at: new Date(),
+            updated_at: new Date().toISOString(),
           })
-          .eq("user_id", userId);
+          .eq("id", userId);
 
         console.log(`Subscription updated for user ${userId}`);
         break;
@@ -163,16 +151,15 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Update subscription status to cancelled
+        // Update profiles table - mark subscription as cancelled
         await supabase
-          .from("subscriptions")
+          .from("profiles")
           .update({
             subscription_status: "cancelled",
-            current_plan: null,
-            subscription_ends_at: null,
-            updated_at: new Date(),
+            subscription_plan: null,
+            updated_at: new Date().toISOString(),
           })
-          .eq("user_id", userId);
+          .eq("id", userId);
 
         console.log(`Subscription deleted for user ${userId}`);
         break;
@@ -198,9 +185,11 @@ Deno.serve(async (req) => {
           amount_paid: invoice.amount_paid,
           currency: invoice.currency,
           payment_status: "succeeded",
-          payment_date: new Date(invoice.created * 1000),
-          due_date: invoice.due_date ? new Date(invoice.due_date * 1000) : null,
-          paid_at: invoice.paid_date ? new Date(invoice.paid_date * 1000) : null,
+          payment_date: new Date(invoice.created * 1000).toISOString(),
+          due_date: invoice.due_date ? new Date(invoice.due_date * 1000).toISOString() : null,
+          paid_at: invoice.status_transitions?.paid_at 
+            ? new Date(invoice.status_transitions.paid_at * 1000).toISOString() 
+            : null,
         });
 
         console.log(`Payment succeeded for user ${userId}`);
@@ -224,11 +213,11 @@ Deno.serve(async (req) => {
         await supabase.from("payment_history").insert({
           user_id: userId,
           stripe_invoice_id: invoice.id,
-          amount_paid: invoice.amount_attempted || 0,
+          amount_paid: invoice.amount_due || 0,
           currency: invoice.currency,
           payment_status: "failed",
-          payment_date: new Date(invoice.created * 1000),
-          due_date: invoice.due_date ? new Date(invoice.due_date * 1000) : null,
+          payment_date: new Date(invoice.created * 1000).toISOString(),
+          due_date: invoice.due_date ? new Date(invoice.due_date * 1000).toISOString() : null,
           failure_reason: invoice.last_finalization_error?.message || "Unknown error",
         });
 
