@@ -18,7 +18,7 @@ import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import Favorites from "./pages/Favorites";
+
 import Pricing from "./pages/Pricing";
 import Success from "./pages/Success";
 
@@ -83,16 +83,6 @@ function AnimatedRoutes() {
             <ProtectedRoute>
               <PageTransition>
                 <SavedRvws />
-              </PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/favorieten"
-          element={
-            <ProtectedRoute>
-              <PageTransition>
-                <Favorites />
               </PageTransition>
             </ProtectedRoute>
           }

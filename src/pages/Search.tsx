@@ -1,16 +1,10 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -30,31 +24,27 @@ import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { SubscriberOnlyDialog } from "@/components/SubscriberOnlyDialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
-  const [viewMode, setViewMode] = useState<"popular" | "newest" | "all">(
-    (searchParams.get('view') as "popular" | "newest" | "all") || "popular"
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
+  const [viewMode, setViewMode] = useState<"popular" | "newest" | "favorites" | "all">(
+    (searchParams.get("view") as "popular" | "newest" | "favorites" | "all") || "popular",
   );
   const [showHistory, setShowHistory] = useState(false);
   const [showSubscriberDialog, setShowSubscriberDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { history, addToHistory, removeFromHistory } = useSearchHistory();
-  const { toggleFavorite, isFavorite } = useFavorites();
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { isSubscriptionEnabled, canAccessFavorites, remaining } = useSubscriptionAccess();
 
   // Sync search term and view mode to URL
   useEffect(() => {
     const params = new URLSearchParams();
-    if (searchTerm) params.set('q', searchTerm);
-    if (viewMode !== 'popular') params.set('view', viewMode);
+    if (searchTerm) params.set("q", searchTerm);
+    if (viewMode !== "popular") params.set("view", viewMode);
     setSearchParams(params, { replace: true });
   }, [searchTerm, viewMode, setSearchParams]);
 
@@ -63,10 +53,10 @@ export default function Search() {
     const handleFocusSearch = () => {
       searchInputRef.current?.focus();
     };
-    window.addEventListener('focus-search', handleFocusSearch);
-    return () => window.removeEventListener('focus-search', handleFocusSearch);
+    window.addEventListener("focus-search", handleFocusSearch);
+    return () => window.removeEventListener("focus-search", handleFocusSearch);
   }, []);
-  
+
   const [suggestDialogOpen, setSuggestDialogOpen] = useState(false);
   const [suggestedCode, setSuggestedCode] = useState("");
   const [suggestedDescription, setSuggestedDescription] = useState("");
@@ -81,16 +71,26 @@ export default function Search() {
   }, [searchTerm, addToHistory]);
 
   const { data: feitcodes, isLoading } = useQuery({
-    queryKey: ["feitcodes", searchTerm, viewMode],
+    queryKey: ["feitcodes", searchTerm, viewMode, favorites],
     queryFn: async () => {
-      let query = supabase
-        .from("feitcodes")
-        .select("*");
+      // Special handling for favorites view
+      if (viewMode === "favorites" && !searchTerm) {
+        if (favorites.length === 0) return [];
+        const { data, error } = await supabase.from("feitcodes").select("*").in("id", favorites);
+        if (error) throw error;
+        return data;
+      }
+
+      let query = supabase.from("feitcodes").select("*");
 
       if (searchTerm) {
-        query = query
-          .ilike("factcode", `%${searchTerm}%`)
-          .order("factcode", { ascending: true });
+        // When searching in favorites mode, filter by favorites first
+        if (viewMode === "favorites") {
+          if (favorites.length === 0) return [];
+          query = query.in("id", favorites).ilike("factcode", `%${searchTerm}%`).order("factcode", { ascending: true });
+        } else {
+          query = query.ilike("factcode", `%${searchTerm}%`).order("factcode", { ascending: true });
+        }
       } else {
         // Sort based on view mode
         if (viewMode === "popular") {
@@ -103,7 +103,7 @@ export default function Search() {
         }
       }
 
-      const { data, error } = await query.limit(viewMode === "all" ? 100 : 9);
+      const { data, error } = await query.limit(viewMode === "all" || viewMode === "favorites" ? 100 : 9);
       if (error) throw error;
       return data;
     },
@@ -113,17 +113,17 @@ export default function Search() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Escape: Go back in history
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         const isInDialog = document.activeElement?.closest('[role="dialog"]');
         if (isInDialog) return;
-        
+
         if (window.history.length > 1) {
           navigate(-1);
         }
       }
 
       // Enter: Navigate to first result when search input is focused
-      if (event.key === 'Enter') {
+      if (event.key === "Enter") {
         const isSearchFocused = document.activeElement === searchInputRef.current;
         if (isSearchFocused && feitcodes && feitcodes.length > 0) {
           event.preventDefault();
@@ -132,8 +132,8 @@ export default function Search() {
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [navigate, feitcodes]);
 
   const suggestMutation = useMutation({
@@ -148,8 +148,7 @@ export default function Search() {
     onSuccess: () => {
       toast({
         title: "Suggestie ingediend",
-        description:
-          "Uw suggestie is ingediend en wordt beoordeeld door een beheerder.",
+        description: "Uw suggestie is ingediend en wordt beoordeeld door een beheerder.",
       });
       setSuggestDialogOpen(false);
       setSuggestedCode("");
@@ -158,28 +157,27 @@ export default function Search() {
     onError: () => {
       toast({
         title: "Fout",
-        description:
-          "Er is een fout opgetreden bij het indienen van uw suggestie.",
+        description: "Er is een fout opgetreden bij het indienen van uw suggestie.",
         variant: "destructive",
       });
     },
   });
 
   const handleCardClick = (factcode: string) => {
-    navigate(`/generator/${factcode}`, { 
-      state: { searchQuery: searchTerm || null } 
+    navigate(`/generator/${factcode}`, {
+      state: { searchQuery: searchTerm || null },
     });
   };
 
   const handleFavoriteClick = (e: React.MouseEvent, codeId: string) => {
     e.stopPropagation();
-    
+
     // If subscriptions are enabled and user can't access favorites, show dialog
     if (isSubscriptionEnabled && !canAccessFavorites) {
       setShowSubscriberDialog(true);
       return;
     }
-    
+
     toggleFavorite(codeId);
   };
 
@@ -190,9 +188,7 @@ export default function Search() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Zoek Feitcode</h1>
-        <p className="text-muted-foreground">
-          Zoek een feitcode om een reden van wetenschap te genereren
-        </p>
+        <p className="text-muted-foreground">Zoek een feitcode om een reden van wetenschap te genereren</p>
       </div>
 
       <div className="relative">
@@ -206,7 +202,7 @@ export default function Search() {
           onBlur={() => setTimeout(() => setShowHistory(false), 200)}
           className="pl-10"
         />
-        
+
         {/* Search History Dropdown */}
         <AnimatePresence>
           {showHistory && history.length > 0 && !searchTerm && (
@@ -251,23 +247,35 @@ export default function Search() {
       </div>
 
       {searchTerm ? (
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-2 text-sm text-muted-foreground"
         >
-          Zoekresultaten voor "
-          <span className="font-medium">{searchTerm}</span>":
+          Zoekresultaten voor "<span className="font-medium">{searchTerm}</span>":
         </motion.p>
       ) : (
         <div className="space-y-3">
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-3">
+            <TabsList className="grid w-full max-w-lg grid-cols-4">
               <TabsTrigger value="popular" className="relative">
                 Populair
               </TabsTrigger>
               <TabsTrigger value="newest" className="relative">
                 Nieuwste
+              </TabsTrigger>
+              <TabsTrigger
+                value="favorites"
+                className="relative gap-1"
+                disabled={isSubscriptionEnabled && !canAccessFavorites}
+              >
+                <Star className="h-3.5 w-3.5" />
+                Favorieten
+                {favorites.length > 0 && (
+                  <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 rounded-full">
+                    {favorites.length}
+                  </span>
+                )}
               </TabsTrigger>
               <TabsTrigger value="all" className="relative">
                 Alles
@@ -286,6 +294,7 @@ export default function Search() {
               {viewMode === "popular" && "Populaire feitcodes:"}
               {viewMode === "newest" && "Nieuwste feitcodes:"}
               {viewMode === "all" && "Alle feitcodes:"}
+              {viewMode === "favorites" && (favorites.length > 0 ? "Jouw favoriete feitcodes:" : "")}
             </motion.p>
           </AnimatePresence>
         </div>
@@ -301,70 +310,66 @@ export default function Search() {
           className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
         >
           {isLoading ? (
-            Array.from({ length: 9 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))
+            Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)
           ) : feitcodes?.length === 0 ? (
             <div className="col-span-full text-center space-y-4">
-              <p className="text-muted-foreground">Geen feitcodes gevonden</p>
-              <Dialog
-                open={suggestDialogOpen}
-                onOpenChange={setSuggestDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Suggereer een feitcode
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[80vh] overflow-auto">
-                  <DialogHeader>
-                    <DialogTitle>Feitcode suggereren</DialogTitle>
-                    <DialogDescription>
-                      Stuur een suggestie voor een nieuwe feitcode. Deze wordt
-                      beoordeeld door een beheerder.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="suggested-code">Feitcode</Label>
-                      <Input
-                        id="suggested-code"
-                        value={suggestedCode}
-                        onChange={(e) => setSuggestedCode(e.target.value)}
-                        placeholder="Bijv. R315b"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="suggested-description">
-                        Omschrijving
-                      </Label>
-                      <Textarea
-                        id="suggested-description"
-                        value={suggestedDescription}
-                        onChange={(e) =>
-                          setSuggestedDescription(e.target.value)
-                        }
-                        placeholder="Omschrijving van de feitcode"
-                        rows={4}
-                      />
-                    </div>
-                    <Button
-                      onClick={() => suggestMutation.mutate()}
-                      disabled={
-                        !suggestedCode.trim() ||
-                        !suggestedDescription.trim() ||
-                        suggestMutation.isPending
-                      }
-                      className="w-full"
-                    >
-                      {suggestMutation.isPending
-                        ? "Versturen..."
-                        : "Verstuur suggestie"}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              {viewMode === "favorites" ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <Star className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-medium">Geen favorieten</h3>
+                  <p className="text-muted-foreground mt-1">
+                    Klik op het ster-icoon bij een feitcode om deze toe te voegen aan je favorieten.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-muted-foreground">Geen feitcodes gevonden</p>
+                  <Dialog open={suggestDialogOpen} onOpenChange={setSuggestDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Suggereer een feitcode
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-h-[80vh] overflow-auto">
+                      <DialogHeader>
+                        <DialogTitle>Feitcode suggereren</DialogTitle>
+                        <DialogDescription>
+                          Stuur een suggestie voor een nieuwe feitcode. Deze wordt beoordeeld door een beheerder.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="suggested-code">Feitcode</Label>
+                          <Input
+                            id="suggested-code"
+                            value={suggestedCode}
+                            onChange={(e) => setSuggestedCode(e.target.value)}
+                            placeholder="Bijv. R315b"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="suggested-description">Omschrijving</Label>
+                          <Textarea
+                            id="suggested-description"
+                            value={suggestedDescription}
+                            onChange={(e) => setSuggestedDescription(e.target.value)}
+                            placeholder="Omschrijving van de feitcode"
+                            rows={4}
+                          />
+                        </div>
+                        <Button
+                          onClick={() => suggestMutation.mutate()}
+                          disabled={!suggestedCode.trim() || !suggestedDescription.trim() || suggestMutation.isPending}
+                          className="w-full"
+                        >
+                          {suggestMutation.isPending ? "Versturen..." : "Verstuur suggestie"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              )}
             </div>
           ) : (
             feitcodes.map((code, index) => (
@@ -374,9 +379,7 @@ export default function Search() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05, duration: 0.3 }}
               >
-                <Card
-                  className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300 relative"
-                >
+                <Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary duration-300 relative">
                   {/* Show favorite button - with lock for non-subscribers when enabled */}
                   {showFavorites ? (
                     <Button
@@ -385,7 +388,9 @@ export default function Search() {
                       className="absolute top-2 right-2 z-10"
                       onClick={(e) => handleFavoriteClick(e, code.id)}
                     >
-                      <Star className={`h-4 w-4 ${isFavorite(code.id) ? 'fill-favorite text-favorite' : 'text-muted-foreground'}`} />
+                      <Star
+                        className={`h-4 w-4 ${isFavorite(code.id) ? "fill-favorite text-favorite" : "text-muted-foreground"}`}
+                      />
                     </Button>
                   ) : isSubscriptionEnabled ? (
                     <Tooltip>
@@ -407,9 +412,7 @@ export default function Search() {
                   <div onClick={() => handleCardClick(code.factcode)}>
                     <CardHeader>
                       <CardTitle className="text-lg pr-8">{code.factcode}</CardTitle>
-                      <CardDescription className="line-clamp-2">
-                        {code.description}
-                      </CardDescription>
+                      <CardDescription className="line-clamp-2">{code.description}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">

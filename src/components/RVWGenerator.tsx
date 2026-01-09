@@ -1018,37 +1018,6 @@ export function RVWGenerator({
         </Card>
       </div>
 
-      {factcode.template && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Template</CardTitle>
-            <CardDescription>De basisstructuur van de RVW</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">
-              {factcode.template}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Grondslag (Legal Basis) - subtle display */}
-      {/* Bottom: show the stopping text (reason) again as requested */}
-      {reasonPrefix && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Opmerking staande houding</CardTitle>
-            <CardDescription>
-              De door u gekozen tekst over het staande houden
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">
-              {reasonPrefix}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Floating preview card */}
       {preview && (

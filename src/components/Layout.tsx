@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { Button } from '@/components/ui/button';
-import { Shield, Search, Book, FileText, Settings, Star } from 'lucide-react';
+import { Shield, Search, Book, FileText, Settings } from 'lucide-react';
 import { UserProfileDropdown } from '@/components/UserProfileDropdown';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
@@ -18,7 +18,7 @@ interface LayoutProps {
 export function Layout({ children, showForAnonymous = false }: LayoutProps) {
   const { user, isModerator } = useAuth();
   const location = useLocation();
-  const { isSubscriptionEnabled, canAccessFavorites, canAccessSavedRvws } = useSubscriptionAccess();
+  const { isSubscriptionEnabled, canAccessSavedRvws } = useSubscriptionAccess();
   
   // Enable global Ctrl+K shortcut
   useGlobalKeyboardShortcuts();
@@ -26,9 +26,6 @@ export function Layout({ children, showForAnonymous = false }: LayoutProps) {
   // Build navigation based on subscription access
   const navigation = [
     { name: 'Zoeken', href: '/', icon: Search },
-    // Only show Favorites if subscriptions are disabled OR user has access
-    ...(!isSubscriptionEnabled || canAccessFavorites ? [{ name: 'Favorieten', href: '/favorieten', icon: Star }] : []),
-    // Show Opgeslagen but it will show a message for non-subscribers
     { name: 'Opgeslagen', href: '/opgeslagen', icon: FileText },
     { name: 'Kennisbank', href: '/kennisbank', icon: Book },
   ];
