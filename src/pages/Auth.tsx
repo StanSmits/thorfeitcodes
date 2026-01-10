@@ -79,6 +79,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showTwoFactor, setShowTwoFactor] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState("");
@@ -86,6 +87,7 @@ export default function Auth() {
   const [mfaUserId, setMfaUserId] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState("signin");
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   const navigateAfterLogin = async () => {
     // Invalidate cache and refresh subscription before navigating
@@ -95,17 +97,85 @@ export default function Auth() {
   };
 
   useEffect(() => {
+    // Check URL params for recovery mode
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get('type');
+    
+    // Listen for auth state changes (handles the recovery token)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveryMode(true);
+        setCheckingSession(false);
+      } else if (event === 'SIGNED_IN' && session && !isRecoveryMode) {
+        // Only navigate away if not in recovery mode
+        if (type !== 'recovery') {
+          navigate("/");
+        }
+      }
+    });
+
+    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session && type === 'recovery') {
+        // User has a session from recovery link
+        setIsRecoveryMode(true);
+        setCheckingSession(false);
+      } else if (session && type !== 'recovery') {
         navigate("/");
       } else {
         setCheckingSession(false);
       }
     });
-  }, [navigate]);
+
+    return () => subscription.unsubscribe();
+  }, [navigate, isRecoveryMode]);
 
   const clearValidationErrors = () => {
     setValidationErrors({});
+  };
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearValidationErrors();
+
+    // Validate password
+    const passwordResult = passwordSchema.safeParse(password);
+    if (!passwordResult.success) {
+      setValidationErrors({ password: passwordResult.error.errors[0].message });
+      return;
+    }
+
+    // Check passwords match
+    if (password !== confirmPassword) {
+      setValidationErrors({ confirmPassword: "Wachtwoorden komen niet overeen" });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+
+      if (error) throw error;
+
+      toast({
+        title: "Wachtwoord gewijzigd",
+        description: "Uw wachtwoord is succesvol gewijzigd.",
+      });
+
+      setIsRecoveryMode(false);
+      setPassword("");
+      setConfirmPassword("");
+      await navigateAfterLogin();
+    } catch (error: any) {
+      toast({
+        title: "Fout bij wijzigen wachtwoord",
+        description: error.message || "Er is een fout opgetreden.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -308,6 +378,71 @@ export default function Auth() {
           <CardFooter className="pt-2">
             <Skeleton className="mx-auto h-4 w-64" />
           </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // Password recovery mode UI
+  if (isRecoveryMode) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 overflow-x-hidden">
+        <Card className="w-full max-w-md border-0 shadow-lg">
+          <CardHeader className="space-y-3 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Shield className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Nieuw wachtwoord instellen</CardTitle>
+            <CardDescription>
+              Voer hieronder uw nieuwe wachtwoord in
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-6">
+            <form onSubmit={handlePasswordUpdate} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Nieuw wachtwoord</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (validationErrors.password) {
+                      setValidationErrors((prev) => ({ ...prev, password: "" }));
+                    }
+                  }}
+                  maxLength={128}
+                  aria-invalid={!!validationErrors.password}
+                />
+                {validationErrors.password && (
+                  <p className="text-sm text-destructive">{validationErrors.password}</p>
+                )}
+                <PasswordStrengthIndicator password={password} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Bevestig wachtwoord</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (validationErrors.confirmPassword) {
+                      setValidationErrors((prev) => ({ ...prev, confirmPassword: "" }));
+                    }
+                  }}
+                  maxLength={128}
+                  aria-invalid={!!validationErrors.confirmPassword}
+                />
+                {validationErrors.confirmPassword && (
+                  <p className="text-sm text-destructive">{validationErrors.confirmPassword}</p>
+                )}
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Bezig met opslaan..." : "Wachtwoord wijzigen"}
+              </Button>
+            </form>
+          </CardContent>
         </Card>
       </div>
     );

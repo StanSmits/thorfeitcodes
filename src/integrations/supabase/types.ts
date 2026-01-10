@@ -250,11 +250,6 @@ export type Database = {
           last_sign_in: string | null
           role: Database["public"]["Enums"]["user_role"]
           stripe_customer_id: string | null
-          subscription_expires_at: string | null
-          subscription_plan:
-            | Database["public"]["Enums"]["subscription_plan_enum"]
-            | null
-          subscription_status: Database["public"]["Enums"]["subscription_status_enum"]
           updated_at: string
         }
         Insert: {
@@ -267,11 +262,6 @@ export type Database = {
           last_sign_in?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           stripe_customer_id?: string | null
-          subscription_expires_at?: string | null
-          subscription_plan?:
-            | Database["public"]["Enums"]["subscription_plan_enum"]
-            | null
-          subscription_status?: Database["public"]["Enums"]["subscription_status_enum"]
           updated_at?: string
         }
         Update: {
@@ -284,11 +274,6 @@ export type Database = {
           last_sign_in?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           stripe_customer_id?: string | null
-          subscription_expires_at?: string | null
-          subscription_plan?:
-            | Database["public"]["Enums"]["subscription_plan_enum"]
-            | null
-          subscription_status?: Database["public"]["Enums"]["subscription_status_enum"]
           updated_at?: string
         }
         Relationships: []
@@ -647,8 +632,6 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       feitcodes_grondslag_type_enum: "RVV 1990" | "APV" | "ASV"
-      subscription_plan_enum: "pro"
-      subscription_status_enum: "active" | "inactive" | "cancelled"
       user_role: "user" | "subscriber" | "moderator" | "administrator"
     }
     CompositeTypes: {
@@ -779,8 +762,6 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       feitcodes_grondslag_type_enum: ["RVV 1990", "APV", "ASV"],
-      subscription_plan_enum: ["pro"],
-      subscription_status_enum: ["active", "inactive", "cancelled"],
       user_role: ["user", "subscriber", "moderator", "administrator"],
     },
   },

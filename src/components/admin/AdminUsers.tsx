@@ -31,43 +31,102 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { Pencil } from "lucide-react";
+import { 
+  Pencil, 
+  Shield, 
+  ShieldCheck, 
+  User, 
+  MoreHorizontal, 
+  Mail, 
+  KeyRound,
+  Trash2,
+  Clock,
+  Calendar
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { Shield, ShieldCheck, User } from "lucide-react";
-import { Skeleton } from "../ui/skeleton";
 import { SkeletonTable } from "../ui/SkeletonCard";
+import { format, formatDistanceToNow } from "date-fns";
+import { nl } from "date-fns/locale";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function AdminUsers() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [sortOption, setSortOption] = useState<string>("name_asc");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      // Use the `profiles` table only. The `role` column on profiles is a single
-      // enum (user_role) so we convert it to a roles array for compatibility with
-      // the existing UI which renders multiple badges.
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, role, created_at")
-        .order("created_at", { ascending: false });
-      if (profilesError) throw profilesError;
+      // Fetch from get-admin-stats edge function which gets subscription data from Stripe
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
+      if (!accessToken) {
+        throw new Error("Not authenticated");
+      }
 
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-admin-stats`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch admin stats');
+      }
+
+      const data = await response.json();
+      
       const normalizeDbToUi = (dbRole: string) => {
         if (!dbRole) return "user";
         if (dbRole === "administrator") return "admin";
         if (dbRole === "subscriber") return "user";
-        return dbRole; // moderator or user
+        return dbRole;
       };
 
-      const usersWithRoles = (profilesData || []).map((p: any) => ({
-        ...p,
-        roles: p.role ? [normalizeDbToUi(p.role)] : [],
+      const usersWithRoles = (data.users || []).map((u: any) => ({
+        id: u.user_id,
+        full_name: u.full_name,
+        email: u.email,
+        created_at: u.created_at,
+        last_sign_in: u.last_sign_in,
+        subscription_status: u.subscription_status,
+        subscription_plan: u.subscription_plan,
+        subscription_expires_at: u.subscription_expires_at,
+        roles: u.role ? [normalizeDbToUi(u.role)] : [],
       }));
 
       return usersWithRoles;
@@ -82,7 +141,6 @@ export function AdminUsers() {
       userId: string;
       role: "admin" | "moderator" | "user";
     }) => {
-      // Map UI role to DB enum value
       const normalizeUiToDb = (uiRole: string) => {
         if (uiRole === "admin") return "administrator";
         if (uiRole === "user") return "user";
@@ -125,6 +183,17 @@ export function AdminUsers() {
     }
   };
 
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "Admin";
+      case "moderator":
+        return "Moderator";
+      default:
+        return "Gebruiker";
+    }
+  };
+
   const handleRoleChange = (
     userId: string,
     currentRoles: string[],
@@ -133,8 +202,53 @@ export function AdminUsers() {
     const currentRole =
       currentRoles && currentRoles.length > 0 ? currentRoles[0] : "user";
     if (currentRole === newRole) return;
-    // Update the single role column on profiles
     updateRoleMutation.mutate({ userId, role: newRole });
+  };
+
+  const handleSendPasswordReset = async (email: string) => {
+    try {
+      // Use production domain for redirect
+      const redirectUrl = window.location.hostname.includes('lovableproject.com') 
+        ? 'https://rvw.stansmits.nl/auth?type=recovery'
+        : `${window.location.origin}/auth?type=recovery`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+      if (error) throw error;
+      toast({
+        title: "E-mail verzonden",
+        description: `Wachtwoord reset e-mail verzonden naar ${email}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Fout",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      // Use the hard_delete_user function
+      const { error } = await supabase.rpc('hard_delete_user', { target_user: userId });
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast({
+        title: "Gebruiker verwijderd",
+        description: "De gebruiker is permanent verwijderd.",
+      });
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    } catch (error: any) {
+      toast({
+        title: "Fout",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   // Edit dialog state
@@ -219,7 +333,6 @@ export function AdminUsers() {
 
       if (!matchesSearch) return false;
       if (roleFilter === "all") return true;
-      // roleFilter values: 'admin' | 'moderator' | 'user'
       const primary = u.roles && u.roles.length > 0 ? u.roles[0] : "user";
       return primary === roleFilter;
     });
@@ -256,215 +369,317 @@ export function AdminUsers() {
   }, [users, searchQuery, roleFilter, sortOption]);
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold">Gebruikers beheren</h2>
+    <TooltipProvider delayDuration={100}>
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold">Gebruikers beheren</h2>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Alle gebruikers</CardTitle>
-          <CardDescription>
-            Overzicht van alle gebruikers en hun rollen
-          </CardDescription>
-          <div className="mt-4 flex flex-col sm:flex-row gap-4">
-            <Input
-              placeholder="Zoek op naam of e-mail..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-md"
-            />
+        <Card>
+          <CardHeader>
+            <CardTitle>Alle gebruikers</CardTitle>
+            <CardDescription>
+              Overzicht van alle gebruikers en hun rollen
+            </CardDescription>
+            <div className="mt-4 flex flex-col sm:flex-row gap-4">
+              <Input
+                placeholder="Zoek op naam of e-mail..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="max-w-md"
+              />
 
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-full sm:w-[220px]">
-                  <SelectValue placeholder="Filter op rol" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle rollen</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="moderator">Moderator</SelectItem>
-                  <SelectItem value="user">Gebruiker</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Filter op rol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle rollen</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="moderator">Moderator</SelectItem>
+                    <SelectItem value="user">Gebruiker</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={sortOption} onValueChange={setSortOption}>
-                <SelectTrigger className="w-full sm:w-[220px]">
-                  <SelectValue placeholder="Sorteren op" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name_asc">Naam A-Z</SelectItem>
-                  <SelectItem value="name_desc">Naam Z-A</SelectItem>
-                  <SelectItem value="created_desc">
-                    Aangemaakt (nieuw → oud)
-                  </SelectItem>
-                  <SelectItem value="created_asc">
-                    Aangemaakt (oud → nieuw)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                <Select value={sortOption} onValueChange={setSortOption}>
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Sorteren op" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name_asc">Naam A-Z</SelectItem>
+                    <SelectItem value="name_desc">Naam Z-A</SelectItem>
+                    <SelectItem value="created_desc">
+                      Aangemaakt (nieuw → oud)
+                    </SelectItem>
+                    <SelectItem value="created_asc">
+                      Aangemaakt (oud → nieuw)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <SkeletonTable />
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Naam</TableHead>
-                    <TableHead>E-mail</TableHead>
-                    <TableHead>Rollen</TableHead>
-                    <TableHead>Rol wijzigen</TableHead>
-                    <TableHead>Acties</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers?.map((user) => {
-                    const primaryRole = user.roles.includes("admin")
-                      ? "admin"
-                      : user.roles.includes("moderator")
-                      ? "moderator"
-                      : "user";
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <SkeletonTable />
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Gebruiker</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Rol</TableHead>
+                      <TableHead>Acties</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers?.map((user) => {
+                      const primaryRole = user.roles.includes("admin")
+                        ? "admin"
+                        : user.roles.includes("moderator")
+                        ? "moderator"
+                        : "user";
 
-                    return (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.full_name || "Onbekend"}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            {user.roles.map((role) => (
-                              <Badge
-                                key={role}
-                                variant="secondary"
-                                className="gap-1"
-                              >
-                                {getRoleIcon(role)}
-                                {role === "admin"
-                                  ? "Admin"
-                                  : role === "moderator"
-                                  ? "Moderator"
-                                  : "Gebruiker"}
-                              </Badge>
-                            ))}
-                            {user.roles.length === 0 && (
-                              <Badge variant="secondary" className="gap-1">
-                                {getRoleIcon("user")}
-                                Gebruiker
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
+                      const hasSubscription = user.subscription_status === 'active';
+                      const lastSignIn = user.last_sign_in 
+                        ? formatDistanceToNow(new Date(user.last_sign_in), { addSuffix: true, locale: nl })
+                        : null;
+
+                      return (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{user.full_name || "Onbekend"}</span>
+                              <span className="text-sm text-muted-foreground">{user.email}</span>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="flex items-center gap-1 cursor-help">
+                                      <Calendar className="h-3 w-3" />
+                                      {format(new Date(user.created_at), 'd MMM yyyy', { locale: nl })}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    <p>Geregistreerd op {format(new Date(user.created_at), 'd MMMM yyyy HH:mm', { locale: nl })}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                {lastSignIn && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="flex items-center gap-1 cursor-help">
+                                        <Clock className="h-3 w-3" />
+                                        {lastSignIn}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      <p>Laatst ingelogd: {format(new Date(user.last_sign_in), 'd MMMM yyyy HH:mm', { locale: nl })}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              {hasSubscription ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span>
+                                      <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                        Pro
+                                      </Badge>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    {user.subscription_expires_at ? (
+                                      <p>Verlengt op: {format(new Date(user.subscription_expires_at), 'd MMMM yyyy', { locale: nl })}</p>
+                                    ) : (
+                                      <p>Actief abonnement</p>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <Badge variant="secondary">Gratis</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={primaryRole}
+                              onValueChange={(value) =>
+                                handleRoleChange(
+                                  user.id,
+                                  user.roles,
+                                  value as "admin" | "moderator" | "user"
+                                )
+                              }
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <div className="flex items-center gap-2">
+                                  {getRoleIcon(primaryRole)}
+                                  <span>{getRoleLabel(primaryRole)}</span>
+                                </div>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="user">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    <span>Gebruiker</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="moderator">
+                                  <div className="flex items-center gap-2">
+                                    <ShieldCheck className="h-4 w-4" />
+                                    <span>Moderator</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="admin">
+                                  <div className="flex items-center gap-2">
+                                    <Shield className="h-4 w-4" />
+                                    <span>Admin</span>
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Acties</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditFor(user)}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Bewerken
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSendPasswordReset(user.email)}>
+                                  <KeyRound className="h-4 w-4 mr-2" />
+                                  Wachtwoord reset
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  navigator.clipboard.writeText(user.email);
+                                  toast({ title: "E-mail gekopieerd" });
+                                }}>
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Kopieer e-mail
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => {
+                                    setUserToDelete(user);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Verwijderen
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                {/* Edit user dialog */}
+                <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Gebruiker bewerken</DialogTitle>
+                    </DialogHeader>
+                    {editingUser && (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          saveUserMutation.mutate({
+                            id: editingUser.id,
+                            full_name: editForm.full_name,
+                            role: editForm.role,
+                          });
+                        }}
+                        className="space-y-4"
+                      >
+                        <div>
+                          <Label>Naam</Label>
+                          <Input
+                            value={editForm.full_name}
+                            onChange={(e) =>
+                              setEditForm((s) => ({
+                                ...s,
+                                full_name: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label>Rol</Label>
                           <Select
-                            value={primaryRole}
-                            onValueChange={(value) =>
-                              handleRoleChange(
-                                user.id,
-                                user.roles,
-                                value as "admin" | "moderator" | "user"
-                              )
+                            value={editForm.role}
+                            onValueChange={(v) =>
+                              setEditForm((s) => ({ ...s, role: v as any }))
                             }
                           >
-                            <SelectTrigger className="w-40">
+                            <SelectTrigger className="w-full">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="user">Gebruiker</SelectItem>
-                              <SelectItem value="moderator">
-                                Moderator
-                              </SelectItem>
+                              <SelectItem value="moderator">Moderator</SelectItem>
                               <SelectItem value="admin">Admin</SelectItem>
                             </SelectContent>
                           </Select>
-                        </TableCell>
-                        <TableCell>
+                        </div>
+                        <div className="flex gap-2">
                           <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditFor(user)}
-                            className="ml-2 h-8 w-8 p-0"
+                            type="submit"
+                            disabled={(saveUserMutation as any).isLoading}
                           >
-                            <Pencil className="h-4 w-4" />
-                            <span className="sr-only">Bewerken</span>
+                            Opslaan
                           </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              {/* Edit user dialog */}
-              <Dialog open={editOpen} onOpenChange={setEditOpen}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Gebruiker bewerken</DialogTitle>
-                  </DialogHeader>
-                  {editingUser && (
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        saveUserMutation.mutate({
-                          id: editingUser.id,
-                          full_name: editForm.full_name,
-                          role: editForm.role,
-                        });
-                      }}
-                      className="space-y-4"
-                    >
-                      <div>
-                        <Label>Naam</Label>
-                        <Input
-                          value={editForm.full_name}
-                          onChange={(e) =>
-                            setEditForm((s) => ({
-                              ...s,
-                              full_name: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label>Rol</Label>
-                        <Select
-                          value={editForm.role}
-                          onValueChange={(v) =>
-                            setEditForm((s) => ({ ...s, role: v as any }))
-                          }
-                        >
-                          <SelectTrigger className="w-full sm:w-[220px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="user">Gebruiker</SelectItem>
-                            <SelectItem value="moderator">Moderator</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="submit"
-                          disabled={(saveUserMutation as any).isLoading}
-                        >
-                          Opslaan
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setEditOpen(false)}
-                        >
-                          Annuleren
-                        </Button>
-                      </div>
-                    </form>
-                  )}
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setEditOpen(false)}
+                          >
+                            Annuleren
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+                  </DialogContent>
+                </Dialog>
+
+                {/* Delete confirmation dialog */}
+                <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Gebruiker verwijderen</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Weet je zeker dat je <strong>{userToDelete?.full_name || userToDelete?.email}</strong> permanent wilt verwijderen? 
+                        Deze actie kan niet ongedaan worden gemaakt.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                      <AlertDialogAction 
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => userToDelete && handleDeleteUser(userToDelete.id)}
+                      >
+                        Verwijderen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </TooltipProvider>
   );
 }
