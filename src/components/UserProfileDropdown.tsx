@@ -151,19 +151,21 @@ export function UserProfileDropdown() {
           <Settings className="mr-2 h-4 w-4" />
           <span>Instellingen</span>
         </DropdownMenuItem>
-        {isSubscriptionEnabled && (
-          <DropdownMenuItem onClick={() => navigate("/pricing")} className="cursor-pointer">
+        <DropdownMenuItem onClick={() => navigate("/pricing")} className="cursor-pointer">
+          {isSubscriptionEnabled ? (
             <CreditCard className="mr-2 h-4 w-4" />
-            <span>Abonnement & Donatie</span>
-            {isSubscriber ? (
-              <span className="ml-auto text-xs text-muted-foreground">
-                {currentPlan === "yearly" ? "Jaarlijks" : "Maandelijks"}
-              </span>
-            ) : (
-              <span className="ml-auto text-xs text-primary font-medium">Upgrade</span>
-            )}
-          </DropdownMenuItem>
-        )}
+          ) : (
+            <Heart className="mr-2 h-4 w-4" />
+          )}
+          <span>{isSubscriptionEnabled ? "Abonnement & Donatie" : "Doneren"}</span>
+          {isSubscriptionEnabled && isSubscriber ? (
+            <span className="ml-auto text-xs text-muted-foreground">
+              {currentPlan === "yearly" ? "Jaarlijks" : "Maandelijks"}
+            </span>
+          ) : isSubscriptionEnabled ? (
+            <span className="ml-auto text-xs text-primary font-medium">Upgrade</span>
+          ) : null}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />

@@ -26,19 +26,22 @@ export default function Pricing() {
   if (!isSubscriptionEnabled) {
     return (
       <Layout showForAnonymous>
-        <div className="container mx-auto py-12">
-          <div className="max-w-xl mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle>Abonnementen tijdelijk uitgeschakeld</CardTitle>
-                <CardDescription className="mt-1">Momenteel zijn abonnementen niet beschikbaar. Probeer het later opnieuw.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link to="/">Terug naar zoeken</Link>
-                </Button>
-              </CardContent>
-            </Card>
+        <div className="container mx-auto py-6 space-y-6">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/">Zoeken</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Doneren</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <div className="max-w-md mx-auto">
+            <DonationCard userId={user.id} email={user.email || ''} />
           </div>
         </div>
       </Layout>
