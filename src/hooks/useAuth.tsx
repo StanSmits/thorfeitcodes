@@ -3,6 +3,11 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+interface UserProfile {
+  full_name?: string | null;
+  has_donated?: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -10,6 +15,7 @@ interface AuthContextType {
   roles: string[];
   isAdmin: boolean;
   isModerator: boolean;
+  profile: UserProfile | null;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -21,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<string[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const fetchUserRoles = useCallback(async (userId: string) => {
     try {
@@ -51,35 +58,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session ?? null);
 
       if (session?.user) {
-        // Try to read profile to obtain the canonical full_name and merge it into user_metadata
+        // Try to read profile to obtain the canonical full_name and has_donated
         try {
           const { data: profileData } = await supabase
             .from('profiles')
-            .select('full_name')
+            .select('full_name, has_donated')
             .eq('id', session.user.id)
             .maybeSingle();
 
-          if (profileData && (profileData as any).full_name) {
-            const mergedUser = {
-              ...session.user,
-              user_metadata: {
-                ...(session.user.user_metadata ?? {}),
-                full_name: (profileData as any).full_name,
-              },
-            } as User;
-            setUser(mergedUser);
+          if (profileData) {
+            setProfile({
+              full_name: (profileData as any).full_name,
+              has_donated: (profileData as any).has_donated === true,
+            });
+
+            if ((profileData as any).full_name) {
+              const mergedUser = {
+                ...session.user,
+                user_metadata: {
+                  ...(session.user.user_metadata ?? {}),
+                  full_name: (profileData as any).full_name,
+                },
+              } as User;
+              setUser(mergedUser);
+            } else {
+              setUser(session.user);
+            }
           } else {
             setUser(session.user);
+            setProfile(null);
           }
         } catch (err) {
           // If profile fetch fails, fall back to session user
           setUser(session.user);
+          setProfile(null);
         }
 
         await fetchUserRoles(session.user.id);
       } else {
         setUser(null);
         setRoles([]);
+        setProfile(null);
       }
     } catch (error) {
       console.error('Error refreshing user/session:', error);
@@ -107,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setSession(null);
       setRoles([]);
+      setProfile(null);
       toast({
         title: "Uitgelogd",
         description: "U bent succesvol uitgelogd.",
@@ -125,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isModerator = roles.includes('moderator') || isAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, roles, isAdmin, isModerator, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ user, session, loading, roles, isAdmin, isModerator, profile, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

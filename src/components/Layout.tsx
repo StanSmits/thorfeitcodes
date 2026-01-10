@@ -7,6 +7,7 @@ import { Shield, Search, Book, FileText, Settings } from 'lucide-react';
 import { UserProfileDropdown } from '@/components/UserProfileDropdown';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { PromotionBanner } from '@/components/PromotionBanner';
 import { useGlobalKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface LayoutProps {
@@ -77,6 +78,11 @@ export function Layout({ children, showForAnonymous = false }: LayoutProps) {
           </div>
         </div>
       </header>
+
+      {/* Promotion Banner - app-wide */}
+      <div className="container px-4 pt-4">
+        <PromotionBanner />
+      </div>
 
       {/* Main content */}
       <main className="container px-4 py-6">

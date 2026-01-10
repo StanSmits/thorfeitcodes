@@ -1,4 +1,4 @@
-import { User, Settings, CreditCard, LogOut, Crown, Sparkles, Infinity, Shield } from "lucide-react";
+import { User, Settings, CreditCard, LogOut, Crown, Sparkles, Infinity, Shield, Heart } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,23 +11,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
-import { useRateLimit } from '@/hooks/useRateLimit';
-import { Progress } from '@/components/ui/progress';
+import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { Progress } from "@/components/ui/progress";
 
 export function UserProfileDropdown() {
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, profile } = useAuth();
   const navigate = useNavigate();
-  const { 
-    isSubscriptionEnabled, 
-    isSubscriber, 
-    currentPlan,
-    hasUnlimitedAccess,
-  } = useSubscriptionAccess();
+  const { isSubscriptionEnabled, isSubscriber, currentPlan, hasUnlimitedAccess } = useSubscriptionAccess();
   const { remaining, dailyLimit, usagePercentage, isUnlimited, loading: rateLimitLoading } = useRateLimit();
-  
+
+  // Check if user has donated
+  const hasDonated = profile?.has_donated === true;
+
   // Check if user is mod or admin
   const isModOrAdmin = roles.includes("admin") || roles.includes("moderator");
+
+  const { signOut } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -60,15 +60,9 @@ export function UserProfileDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative h-10 w-10 rounded-full"
-        >
+        <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {getUserInitials()}
-            </AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground">{getUserInitials()}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
@@ -76,10 +70,14 @@ export function UserProfileDropdown() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <div className="flex items-center justify-between space-x-2">
-              <p className="text-sm font-medium leading-none truncate max-w-[120px]">
-                {getUserName()}
-              </p>
-              <div className="flex items-center gap-1">
+              <p className="text-sm font-medium leading-none truncate max-w-[120px]">{getUserName()}</p>
+              <div className="flex items-center gap-1 flex-wrap">
+                {hasDonated && (
+                  <div className="px-2 py-1 text-xs font-medium bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 rounded-md flex items-center gap-1">
+                    <Heart className="h-3 w-3" />
+                    Donateur
+                  </div>
+                )}
                 {isSubscriber && (
                   <div className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-md flex items-center gap-1">
                     <Crown className="h-3 w-3" />
@@ -92,19 +90,13 @@ export function UserProfileDropdown() {
                     role === "Beheerder"
                       ? "bg-destructive text-destructive-foreground"
                       : role === "Moderator"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground";
-                  return (
-                    <div className={`px-2 py-1 text-xs font-medium ${classes} rounded-md w-fit`}>
-                      {role}
-                    </div>
-                  );
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground";
+                  return <div className={`px-2 py-1 text-xs font-medium ${classes} rounded-md w-fit`}>{role}</div>;
                 })()}
               </div>
             </div>
-            <p className="text-xs leading-none text-muted-foreground truncate">
-              {user?.email}
-            </p>
+            <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
           </div>
         </DropdownMenuLabel>
 
@@ -146,10 +138,9 @@ export function UserProfileDropdown() {
               </div>
               <Progress value={usagePercentage} className="h-1.5" />
               <p className="text-xs text-muted-foreground mt-1">
-                {remaining > 0 
-                  ? `Nog ${remaining} generatie${remaining !== 1 ? 's' : ''} over`
-                  : 'Limiet bereikt - upgrade voor meer'
-                }
+                {remaining > 0
+                  ? `Nog ${remaining} generatie${remaining !== 1 ? "s" : ""} over`
+                  : "Limiet bereikt - upgrade voor meer"}
               </p>
             </div>
           </>
@@ -163,10 +154,10 @@ export function UserProfileDropdown() {
         {isSubscriptionEnabled && (
           <DropdownMenuItem onClick={() => navigate("/pricing")} className="cursor-pointer">
             <CreditCard className="mr-2 h-4 w-4" />
-            <span>Abonnement</span>
+            <span>Abonnement & Donatie</span>
             {isSubscriber ? (
               <span className="ml-auto text-xs text-muted-foreground">
-                {currentPlan === 'yearly' ? 'Jaarlijks' : 'Maandelijks'}
+                {currentPlan === "yearly" ? "Jaarlijks" : "Maandelijks"}
               </span>
             ) : (
               <span className="ml-auto text-xs text-primary font-medium">Upgrade</span>

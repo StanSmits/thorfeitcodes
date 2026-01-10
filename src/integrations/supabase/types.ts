@@ -246,6 +246,7 @@ export type Database = {
           deleted_at: string | null
           email: string
           full_name: string | null
+          has_donated: boolean
           id: string
           last_sign_in: string | null
           role: Database["public"]["Enums"]["user_role"]
@@ -258,6 +259,7 @@ export type Database = {
           deleted_at?: string | null
           email: string
           full_name?: string | null
+          has_donated?: boolean
           id: string
           last_sign_in?: string | null
           role?: Database["public"]["Enums"]["user_role"]
@@ -270,6 +272,7 @@ export type Database = {
           deleted_at?: string | null
           email?: string
           full_name?: string | null
+          has_donated?: boolean
           id?: string
           last_sign_in?: string | null
           role?: Database["public"]["Enums"]["user_role"]

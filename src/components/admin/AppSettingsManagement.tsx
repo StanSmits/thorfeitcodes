@@ -5,13 +5,22 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Settings, Power, CreditCard, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Settings, Power, CreditCard, AlertTriangle, RefreshCw, Megaphone, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { invalidateSettingsCache } from '@/lib/appSettings';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface AppSetting {
   key: string;
@@ -23,6 +32,10 @@ export function AppSettingsManagement() {
   const [settings, setSettings] = useState<AppSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [bannerText, setBannerText] = useState('');
+  const [bannerColor, setBannerColor] = useState('#3b82f6');
+  const [bannerEnabled, setBannerEnabled] = useState(false);
+  const [bannerLoading, setBannerLoading] = useState(false);
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -44,6 +57,39 @@ export function AppSettingsManagement() {
       }
       
       setSettings(Array.from(settingsMap.values()));
+      
+      // Fetch banner text
+      const { data: bannerData } = await supabase
+        .from('settings_text')
+        .select('value')
+        .eq('key', 'pricing_banner_text')
+        .single();
+      
+      if (bannerData) {
+        setBannerText(bannerData.value || '');
+      }
+
+      // Fetch banner enabled state
+      const { data: bannerEnabledData } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'promotion_banner_enabled')
+        .single();
+      
+      if (bannerEnabledData) {
+        setBannerEnabled(bannerEnabledData.value === true);
+      }
+
+      // Fetch banner color
+      const { data: bannerColorData } = await supabase
+        .from('settings_text')
+        .select('value')
+        .eq('key', 'promotion_banner_color')
+        .single();
+      
+      if (bannerColorData && bannerColorData.value) {
+        setBannerColor(bannerColorData.value);
+      }
     } catch (err) {
       console.error('Failed to fetch app settings:', err);
       toast({
@@ -85,6 +131,56 @@ export function AppSettingsManagement() {
     } catch (err: any) {
       toast({
         title: 'Fout bij bijwerken',
+        description: err.message || 'Er is een fout opgetreden.',
+        variant: 'destructive',
+      });
+    } finally {
+    setUpdating(null);
+    }
+  };
+
+  const handleBannerSave = async () => {
+    setBannerLoading(true);
+    try {
+      const { error } = await supabase
+        .from('settings_text')
+        .upsert({ key: 'pricing_banner_text', value: bannerText.trim() }, { onConflict: 'key' });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Banner bijgewerkt',
+        description: bannerText.trim() ? 'De promotiebanner tekst is opgeslagen.' : 'De promotiebanner tekst is verwijderd.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Fout bij opslaan',
+        description: err.message || 'Er is een fout opgetreden.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBannerLoading(false);
+    }
+  };
+
+  const handleBannerToggle = async (enabled: boolean) => {
+    setUpdating('promotion_banner_enabled');
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'promotion_banner_enabled', value: enabled }, { onConflict: 'key' });
+
+      if (error) throw error;
+
+      setBannerEnabled(enabled);
+
+      toast({
+        title: enabled ? 'Banner ingeschakeld' : 'Banner uitgeschakeld',
+        description: enabled ? 'De promotiebanner is nu zichtbaar in de app.' : 'De promotiebanner is verborgen.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Fout bij wijzigen',
         description: err.message || 'Er is een fout opgetreden.',
         variant: 'destructive',
       });
@@ -180,7 +276,7 @@ export function AppSettingsManagement() {
         )}
 
         {settings
-          .filter(s => s.key !== 'maintenance_password_enabled') // Hide this one, managed in password settings
+          .filter(s => s.key !== 'maintenance_password_enabled' && s.key !== 'promotion_banner_enabled') // Hide these, managed elsewhere
           .map(setting => (
             <div
               key={setting.key}
@@ -217,6 +313,186 @@ export function AppSettingsManagement() {
               />
             </div>
           ))}
+
+        {/* Banner Text Setting */}
+        <div className="p-4 border rounded-lg bg-card space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className={`p-2 rounded-md ${bannerEnabled ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                <Megaphone className="h-5 w-5" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="banner-toggle" className="font-medium">
+                    Promotiebanner
+                  </Label>
+                  <Badge variant={bannerEnabled ? 'default' : 'secondary'} className={bannerEnabled ? 'bg-green-500' : ''}>
+                    {bannerEnabled ? 'Actief' : 'Inactief'}
+                  </Badge>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6">
+                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>Promotiebanner Handleiding</DialogTitle>
+                        <DialogDescription>
+                          De promotiebanner wordt app-breed getoond (behalve op de inlogpagina).
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 text-sm">
+                        <div>
+                          <h4 className="font-semibold mb-2">HTML Ondersteuning</h4>
+                          <p className="text-muted-foreground mb-2">
+                            Je kunt HTML gebruiken voor opmaak en links. Bijvoorbeeld:
+                          </p>
+                          <div className="bg-muted p-3 rounded-md font-mono text-xs space-y-2">
+                            <p>🎉 Korting! Gebruik code <strong>&lt;strong&gt;WELKOM&lt;/strong&gt;</strong></p>
+                            <p>Bekijk onze &lt;a href="/pricing"&gt;abonnementen&lt;/a&gt;</p>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2">Ondersteunde HTML tags</h4>
+                          <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                            <li><code className="bg-muted px-1 rounded">&lt;a href="..."&gt;</code> - Links</li>
+                            <li><code className="bg-muted px-1 rounded">&lt;strong&gt;</code> of <code className="bg-muted px-1 rounded">&lt;b&gt;</code> - Vetgedrukt</li>
+                            <li><code className="bg-muted px-1 rounded">&lt;em&gt;</code> of <code className="bg-muted px-1 rounded">&lt;i&gt;</code> - Cursief</li>
+                            <li><code className="bg-muted px-1 rounded">&lt;br&gt;</code> - Regelafbreking</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2">Voorbeeld</h4>
+                          <div className="bg-muted p-3 rounded-md font-mono text-xs">
+                            🚀 Nieuw! Bekijk onze &lt;a href="/kennisbank"&gt;kennisbank&lt;/a&gt; voor meer informatie.
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t">
+                          <p className="text-muted-foreground text-xs">
+                            💡 Tip: Emoji's worden ook ondersteund! Gebruik ze om aandacht te trekken.
+                          </p>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Toon een promotiebanner in de hele applicatie. Ondersteunt HTML voor links en opmaak.
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="banner-toggle"
+              checked={bannerEnabled}
+              onCheckedChange={handleBannerToggle}
+              disabled={updating === 'promotion_banner_enabled'}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="banner-text" className="text-sm text-muted-foreground">
+              Banner tekst (HTML toegestaan)
+            </Label>
+            <Textarea
+              id="banner-text"
+              value={bannerText}
+              onChange={(e) => setBannerText(e.target.value)}
+              placeholder="Bijv: 🎉 Eerste maand gratis! <a href='/pricing'>Bekijk aanbieding</a>"
+              className="min-h-[80px] font-mono text-sm"
+            />
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-muted-foreground">
+                Laat leeg om de banner te verbergen (ook als ingeschakeld).
+              </p>
+              <Button 
+                onClick={handleBannerSave} 
+                disabled={bannerLoading}
+                variant="outline"
+                size="sm"
+              >
+                {bannerLoading ? 'Opslaan...' : 'Tekst opslaan'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Color Picker */}
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">
+              Achtergrondkleur
+            </Label>
+            <div className="flex gap-3 items-center">
+              <input
+                type="color"
+                value={bannerColor}
+                onChange={(e) => setBannerColor(e.target.value)}
+                className="h-10 w-14 cursor-pointer rounded border border-input bg-background"
+              />
+              <input
+                type="text"
+                value={bannerColor}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^#([A-Fa-f0-9]{0,6})$/.test(val)) {
+                    setBannerColor(val);
+                  }
+                }}
+                placeholder="#3b82f6"
+                className="flex h-10 w-28 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+              />
+              <Button
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase
+                      .from('settings_text')
+                      .upsert({ key: 'promotion_banner_color', value: bannerColor }, { onConflict: 'key' });
+                    if (error) throw error;
+                    toast({
+                      title: 'Kleur opgeslagen',
+                      description: 'De banner achtergrondkleur is bijgewerkt.',
+                    });
+                  } catch (err: any) {
+                    toast({
+                      title: 'Fout',
+                      description: err.message || 'Kon kleur niet opslaan.',
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+                variant="outline"
+                size="sm"
+              >
+                Kleur opslaan
+              </Button>
+              <Button
+                onClick={() => setBannerColor('#3b82f6')}
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+              >
+                Reset
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Kies een kleur voor de banner achtergrond. Standaard: blauw (#3b82f6)
+            </p>
+          </div>
+
+          {bannerText.trim() && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Voorbeeld:</Label>
+              <div 
+                className="relative px-4 py-3 rounded-lg text-white"
+                style={{ backgroundColor: bannerColor }}
+              >
+                <div 
+                  className="text-center text-sm font-medium [&_a]:underline [&_a]:font-semibold"
+                  dangerouslySetInnerHTML={{ __html: bannerText }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

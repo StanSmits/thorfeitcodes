@@ -225,6 +225,79 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        
+        // Only handle one-time payment donations (not subscriptions)
+        if (session.mode !== "payment") {
+          break;
+        }
+
+        // Check if this is a donation
+        if (session.metadata?.type !== "donation") {
+          break;
+        }
+
+        const customerId = session.customer as string;
+        const userId = session.metadata?.user_id;
+
+        if (!userId) {
+          // Try to get user_id from customer metadata
+          const customer = await stripe.customers.retrieve(customerId);
+          const customerUserId = (customer.metadata?.["user_id"]) as string;
+          
+          if (!customerUserId) {
+            console.error("Could not find user_id for donation:", session.id);
+            break;
+          }
+
+          // Mark user as donor
+          await supabase
+            .from("profiles")
+            .update({
+              has_donated: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", customerUserId);
+
+          // Record donation in payment history
+          await supabase.from("payment_history").insert({
+            user_id: customerUserId,
+            stripe_payment_intent_id: session.payment_intent as string,
+            amount_paid: session.amount_total,
+            currency: session.currency,
+            payment_status: "succeeded",
+            payment_date: new Date().toISOString(),
+            paid_at: new Date().toISOString(),
+          });
+
+          console.log(`Donation recorded for user ${customerUserId}`);
+        } else {
+          // Mark user as donor
+          await supabase
+            .from("profiles")
+            .update({
+              has_donated: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", userId);
+
+          // Record donation in payment history
+          await supabase.from("payment_history").insert({
+            user_id: userId,
+            stripe_payment_intent_id: session.payment_intent as string,
+            amount_paid: session.amount_total,
+            currency: session.currency,
+            payment_status: "succeeded",
+            payment_date: new Date().toISOString(),
+            paid_at: new Date().toISOString(),
+          });
+
+          console.log(`Donation recorded for user ${userId}`);
+        }
+        break;
+      }
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }

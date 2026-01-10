@@ -4,6 +4,7 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import { useSubscription } from '@/hooks/useSubscription';
 import { SubscriptionPlans } from '@/components/SubscriptionPlans';
 import { CustomerPortalButton } from '@/components/CustomerPortalButton';
+import { DonationCard } from '@/components/DonationCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Layout } from '@/components/Layout';
@@ -131,7 +132,8 @@ export default function Pricing() {
 
             {/* Sidebar */}
             <div className="space-y-4">
-              {/* FAQ and Support cards only - subscription status already shown in main content */}
+              {/* Donation Card */}
+              <DonationCard userId={user.id} email={user.email || ''} />
 
               {/* FAQ Section */}
               <Card>

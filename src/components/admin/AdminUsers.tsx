@@ -50,7 +50,8 @@ import {
   KeyRound,
   Trash2,
   Clock,
-  Calendar
+  Calendar,
+  Heart
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { SkeletonTable } from "../ui/SkeletonCard";
@@ -126,6 +127,7 @@ export function AdminUsers() {
         subscription_status: u.subscription_status,
         subscription_plan: u.subscription_plan,
         subscription_expires_at: u.subscription_expires_at,
+        has_donated: u.has_donated === true,
         roles: u.role ? [normalizeDbToUi(u.role)] : [],
       }));
 
@@ -481,26 +483,34 @@ export function AdminUsers() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1">
-                              {hasSubscription ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span>
-                                      <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-                                        Pro
-                                      </Badge>
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">
-                                    {user.subscription_expires_at ? (
-                                      <p>Verlengt op: {format(new Date(user.subscription_expires_at), 'd MMMM yyyy', { locale: nl })}</p>
-                                    ) : (
-                                      <p>Actief abonnement</p>
-                                    )}
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : (
-                                <Badge variant="secondary">Gratis</Badge>
-                              )}
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {user.has_donated && (
+                                  <Badge variant="outline" className="bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 border-pink-300 dark:border-pink-700">
+                                    <Heart className="h-3 w-3 mr-1" />
+                                    Donateur
+                                  </Badge>
+                                )}
+                                {hasSubscription ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>
+                                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                          Pro
+                                        </Badge>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      {user.subscription_expires_at ? (
+                                        <p>Verlengt op: {format(new Date(user.subscription_expires_at), 'd MMMM yyyy', { locale: nl })}</p>
+                                      ) : (
+                                        <p>Actief abonnement</p>
+                                      )}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <Badge variant="secondary">Gratis</Badge>
+                                )}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>

@@ -22,6 +22,7 @@ interface UserStat {
   today_usage: number;
   last_sign_in: string | null;
   created_at: string;
+  has_donated: boolean;
 }
 
 interface AdminStatsResponse {
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
     // Fetch all profiles
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, full_name, stripe_customer_id, last_sign_in, created_at')
+      .select('id, email, full_name, stripe_customer_id, last_sign_in, created_at, has_donated')
       .is('deleted_at', null)
       .order('last_sign_in', { ascending: false, nullsFirst: false });
 
@@ -224,6 +225,7 @@ Deno.serve(async (req) => {
         today_usage: todayUsage,
         last_sign_in: profile.last_sign_in,
         created_at: profile.created_at,
+        has_donated: profile.has_donated === true,
       };
     });
 
