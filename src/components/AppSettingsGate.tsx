@@ -34,13 +34,30 @@ export function AppSettingsGate({ children }: AppSettingsGateProps) {
 
     setVerifying(true);
     try {
-      const { data, error } = await supabase.rpc('verify_maintenance_password', {
-        p_password: password,
-      });
+      // Use edge function for server-side password verification
+      const response = await fetch(
+        'https://jsptozrmlibvxzfkvrec.supabase.co/functions/v1/verify-maintenance-password',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password }),
+        }
+      );
 
-      if (error) throw error;
+      const result = await response.json();
 
-      if (data === true) {
+      if (response.status === 429) {
+        toast({
+          title: 'Te veel pogingen',
+          description: 'Wacht even en probeer het opnieuw.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (result.valid === true) {
         sessionStorage.setItem('maintenance_bypass', 'true');
         setBypassed(true);
         toast({

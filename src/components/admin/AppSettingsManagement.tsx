@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { invalidateSettingsCache } from '@/lib/appSettings';
+import DOMPurify from 'dompurify';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+
+// Configure DOMPurify to only allow safe HTML tags
+const sanitizeHTML = (html: string): string => {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['a', 'strong', 'b', 'em', 'i', 'br', 'span'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+    ALLOW_DATA_ATTR: false,
+  });
+};
 
 interface AppSetting {
   key: string;
@@ -487,7 +497,7 @@ export function AppSettingsManagement() {
               >
                 <div 
                   className="text-center text-sm font-medium [&_a]:underline [&_a]:font-semibold"
-                  dangerouslySetInnerHTML={{ __html: bannerText }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHTML(bannerText) }}
                 />
               </div>
             </div>

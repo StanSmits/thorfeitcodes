@@ -2,12 +2,22 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 
 interface BannerSettings {
   text: string | null;
   enabled: boolean;
   color: string;
 }
+
+// Configure DOMPurify to only allow safe HTML tags
+const sanitizeHTML = (html: string): string => {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['a', 'strong', 'b', 'em', 'i', 'br', 'span'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+    ALLOW_DATA_ATTR: false,
+  });
+};
 
 export function PromotionBanner() {
   const [settings, setSettings] = useState<BannerSettings>({ text: null, enabled: false, color: '#3b82f6' });
@@ -55,6 +65,9 @@ export function PromotionBanner() {
     return null;
   }
 
+  // Sanitize the HTML content before rendering
+  const sanitizedText = sanitizeHTML(settings.text);
+
   return (
     <div 
       className="relative px-4 py-3 rounded-lg text-white"
@@ -62,7 +75,7 @@ export function PromotionBanner() {
     >
       <div 
         className="pr-8 text-center text-sm font-medium [&_a]:underline [&_a]:font-semibold [&_a]:hover:opacity-80"
-        dangerouslySetInnerHTML={{ __html: settings.text }}
+        dangerouslySetInnerHTML={{ __html: sanitizedText }}
       />
       <button
         onClick={() => setDismissed(true)}
