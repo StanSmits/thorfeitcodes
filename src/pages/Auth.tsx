@@ -88,6 +88,8 @@ export default function Auth() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState("signin");
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const navigateAfterLogin = async () => {
     // Invalidate cache and refresh subscription before navigating
@@ -172,6 +174,53 @@ export default function Auth() {
         title: "Fout bij wijzigen wachtwoord",
         description: error.message || "Er is een fout opgetreden.",
         variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearValidationErrors();
+
+    // Basic email validation
+    if (!email.trim()) {
+      setValidationErrors({ email: "E-mailadres is verplicht" });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setValidationErrors({ email: "Ongeldig e-mailadres" });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Use production domain for redirect
+      const redirectUrl = window.location.hostname.includes('lovableproject.com') 
+        ? 'https://rvw.stansmits.nl/auth?type=recovery'
+        : `${window.location.origin}/auth?type=recovery`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) throw error;
+
+      setResetEmailSent(true);
+      toast({
+        title: "E-mail verzonden",
+        description: "Als dit e-mailadres bij ons bekend is, ontvangt u een link om uw wachtwoord te resetten.",
+      });
+    } catch (error: any) {
+      // Don't reveal if email exists or not for security
+      setResetEmailSent(true);
+      toast({
+        title: "E-mail verzonden",
+        description: "Als dit e-mailadres bij ons bekend is, ontvangt u een link om uw wachtwoord te resetten.",
       });
     } finally {
       setLoading(false);
@@ -448,6 +497,85 @@ export default function Auth() {
     );
   }
 
+  // Forgot password UI
+  if (showForgotPassword) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 overflow-x-hidden">
+        <Card className="w-full max-w-md border-0 shadow-lg">
+          <CardHeader className="space-y-3 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Shield className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Wachtwoord vergeten</CardTitle>
+            <CardDescription>
+              {resetEmailSent 
+                ? "We hebben u een e-mail gestuurd met instructies om uw wachtwoord te resetten."
+                : "Voer uw e-mailadres in om een reset link te ontvangen"
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-6">
+            {resetEmailSent ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  Controleer uw inbox (en spam folder) voor de reset link. 
+                  De link is 1 uur geldig.
+                </p>
+                <Button 
+                  className="w-full" 
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setResetEmailSent(false);
+                    setEmail("");
+                  }}
+                >
+                  Terug naar inloggen
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">E-mailadres</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="naam@amsterdam.nl"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (validationErrors.email) {
+                        setValidationErrors((prev) => ({ ...prev, email: "" }));
+                      }
+                    }}
+                    maxLength={255}
+                    aria-invalid={!!validationErrors.email}
+                  />
+                  {validationErrors.email && (
+                    <p className="text-sm text-destructive">{validationErrors.email}</p>
+                  )}
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Bezig met verzenden..." : "Reset link versturen"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="w-full"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    clearValidationErrors();
+                  }}
+                >
+                  Terug naar inloggen
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <>
       <TwoFactorDialog
@@ -522,6 +650,20 @@ export default function Auth() {
                           {validationErrors.password && (
                             <p className="text-sm text-destructive">{validationErrors.password}</p>
                           )}
+                        </div>
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            variant="link"
+                            className="px-0 text-sm"
+                            onClick={() => {
+                              setShowForgotPassword(true);
+                              setResetEmailSent(false);
+                              clearValidationErrors();
+                            }}
+                          >
+                            Wachtwoord vergeten?
+                          </Button>
                         </div>
                         <Button type="submit" className="w-full" disabled={loading}>
                           {loading ? "Bezig met inloggen..." : "Inloggen"}
