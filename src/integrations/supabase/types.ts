@@ -463,6 +463,24 @@ export type Database = {
         }
         Relationships: []
       }
+      settings_text: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -498,6 +516,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_maintenance_password: { Args: never; Returns: boolean }
       create_missing_profiles: { Args: never; Returns: undefined }
       get_admin_users: {
         Args: never
@@ -506,6 +525,14 @@ export type Database = {
           email: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      get_all_app_settings: {
+        Args: never
+        Returns: {
+          key: string
+          updated_at: string
+          value: boolean
         }[]
       }
       get_app_settings: { Args: never; Returns: Json }
@@ -574,6 +601,7 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_maintenance_password_set: { Args: never; Returns: boolean }
       is_moderator_or_above: { Args: never; Returns: boolean }
       list_user_sessions: {
         Args: { p_user_id: string }
@@ -599,8 +627,20 @@ export type Database = {
         Args: { keep_session_id?: string; p_user_id: string }
         Returns: undefined
       }
+      set_maintenance_password: {
+        Args: { p_password: string }
+        Returns: boolean
+      }
+      update_app_setting: {
+        Args: { p_key: string; p_value: boolean }
+        Returns: boolean
+      }
       verify_backup_code: {
         Args: { p_code: string; p_user: string }
+        Returns: boolean
+      }
+      verify_maintenance_password: {
+        Args: { p_password: string }
         Returns: boolean
       }
     }

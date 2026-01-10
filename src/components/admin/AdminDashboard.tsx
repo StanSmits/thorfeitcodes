@@ -7,8 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, Crown, Shield, Activity, Search, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format, isAfter, subHours } from 'date-fns';
 import { nl } from 'date-fns/locale';
+import { MaintenancePasswordSettings } from './MaintenancePasswordSettings';
+import { AppSettingsManagement } from './AppSettingsManagement';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface UserStats {
   user_id: string;
@@ -83,7 +86,12 @@ export function AdminDashboard() {
     u.role !== 'admin' && u.role !== 'moderator'
   ).length;
   const staffCount = users.filter(u => u.role === 'admin' || u.role === 'moderator').length;
-  const activeToday = users.filter(u => u.today_usage > 0).length;
+  
+  // Count users who logged in within the last 24 hours
+  const twentyFourHoursAgo = subHours(new Date(), 24);
+  const activeLast24h = users.filter(u => 
+    u.last_sign_in && isAfter(new Date(u.last_sign_in), twentyFourHoursAgo)
+  ).length;
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -96,7 +104,7 @@ export function AdminDashboard() {
     }
   };
 
-  const getSubscriptionBadge = (status: string | null, plan: string | null, role: string) => {
+  const getSubscriptionBadge = (status: string | null, plan: string | null, role: string, expiresAt: string | null) => {
     // Staff members show staff badge instead of subscription
     if (role === 'admin' || role === 'moderator') {
       return (
@@ -106,21 +114,45 @@ export function AdminDashboard() {
         </Badge>
       );
     }
-    if (status === 'active' || status === 'trialing') {
+    
+    const badge = (() => {
+      if (status === 'active' || status === 'trialing') {
+        return (
+          <Badge className="bg-green-500 text-white flex items-center gap-1 cursor-help">
+            <Crown className="h-3 w-3" />
+            {plan === 'yearly' ? 'Jaarlijks' : plan === 'monthly' ? 'Maandelijks' : 'Pro'}
+          </Badge>
+        );
+      }
+      if (status === 'canceled' || status === 'cancelled') {
+        return <Badge variant="outline" className="text-orange-500 border-orange-500 cursor-help">Opgezegd</Badge>;
+      }
+      if (status === 'past_due') {
+        return <Badge variant="destructive" className="cursor-help">Achterstallig</Badge>;
+      }
+      return <Badge variant="outline">Gratis</Badge>;
+    })();
+
+    // Add tooltip for subscribers with expiration date
+    if (expiresAt && (status === 'active' || status === 'trialing' || status === 'canceled' || status === 'cancelled')) {
       return (
-        <Badge className="bg-green-500 text-white flex items-center gap-1">
-          <Crown className="h-3 w-3" />
-          {plan === 'yearly' ? 'Jaarlijks' : plan === 'monthly' ? 'Maandelijks' : 'Pro'}
-        </Badge>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>{badge}</span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="z-[100]">
+            <p>
+              {status === 'canceled' || status === 'cancelled' 
+                ? `Loopt af op: ${format(new Date(expiresAt), 'd MMMM yyyy', { locale: nl })}`
+                : `Verlenging: ${format(new Date(expiresAt), 'd MMMM yyyy', { locale: nl })}`
+              }
+            </p>
+          </TooltipContent>
+        </Tooltip>
       );
     }
-    if (status === 'canceled' || status === 'cancelled') {
-      return <Badge variant="outline" className="text-orange-500 border-orange-500">Opgezegd</Badge>;
-    }
-    if (status === 'past_due') {
-      return <Badge variant="destructive">Achterstallig</Badge>;
-    }
-    return <Badge variant="outline">Gratis</Badge>;
+
+    return badge;
   };
 
   const getUsageBadge = (usage: number, role: string, subscriptionStatus: string | null) => {
@@ -176,6 +208,7 @@ export function AdminDashboard() {
   }
 
   return (
+    <TooltipProvider delayDuration={100}>
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -223,7 +256,7 @@ export function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-green-500">{activeToday}</p>
+            <p className="text-3xl font-bold text-green-500">{activeLast24h}</p>
           </CardContent>
         </Card>
       </div>
@@ -284,7 +317,7 @@ export function AdminDashboard() {
                       </TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
                       <TableCell>
-                        {getSubscriptionBadge(user.subscription_status, user.subscription_plan, user.role)}
+                        {getSubscriptionBadge(user.subscription_status, user.subscription_plan, user.role, user.subscription_expires_at)}
                       </TableCell>
                       <TableCell>
                         {getUsageBadge(user.today_usage, user.role, user.subscription_status)}
@@ -303,6 +336,13 @@ export function AdminDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* App Settings Management */}
+      <AppSettingsManagement />
+
+      {/* Maintenance Password Settings */}
+      <MaintenancePasswordSettings />
     </div>
+    </TooltipProvider>
   );
 }
