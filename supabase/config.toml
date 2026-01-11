@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.verify-maintenance-password]
 verify_jwt = false
+
+[functions.sanitize-user-metadata]
+verify_jwt = true

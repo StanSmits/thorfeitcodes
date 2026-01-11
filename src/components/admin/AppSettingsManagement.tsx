@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Settings, Power, CreditCard, AlertTriangle, RefreshCw, Megaphone, HelpCircle } from 'lucide-react';
+import { Settings, Power, CreditCard, AlertTriangle, RefreshCw, Megaphone, HelpCircle, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
@@ -46,6 +46,7 @@ export function AppSettingsManagement() {
   const [bannerColor, setBannerColor] = useState('#3b82f6');
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [bannerLoading, setBannerLoading] = useState(false);
+  const [sanitizing, setSanitizing] = useState(false);
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -502,6 +503,78 @@ export function AppSettingsManagement() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Security Section */}
+        <div className="p-4 border rounded-lg bg-card space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="p-2 rounded-md bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+              <ShieldAlert className="h-5 w-5" />
+            </div>
+            <div className="flex-1 space-y-1">
+              <Label className="font-medium">
+                Beveiliging
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Verwijder verouderde backup codes uit gebruikersmetadata (legacy data die niet meer wordt gebruikt).
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={async () => {
+              setSanitizing(true);
+              try {
+                const { data: sessionData } = await supabase.auth.getSession();
+                const accessToken = sessionData?.session?.access_token;
+                
+                if (!accessToken) {
+                  throw new Error('Niet ingelogd');
+                }
+
+                const response = await fetch(
+                  'https://jsptozrmlibvxzfkvrec.supabase.co/functions/v1/sanitize-user-metadata',
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${accessToken}`,
+                    },
+                  }
+                );
+
+                const result = await response.json();
+                
+                if (!response.ok) {
+                  throw new Error(result.error || 'Er is een fout opgetreden');
+                }
+
+                toast({
+                  title: 'Gebruikersdata opgeschoond',
+                  description: `${result.sanitizedCount} gebruiker(s) zijn bijgewerkt.`,
+                });
+              } catch (err: any) {
+                toast({
+                  title: 'Fout',
+                  description: err.message || 'Er is een fout opgetreden.',
+                  variant: 'destructive',
+                });
+              } finally {
+                setSanitizing(false);
+              }
+            }}
+            disabled={sanitizing}
+            variant="outline"
+            size="sm"
+          >
+            {sanitizing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Bezig...
+              </>
+            ) : (
+              'Gebruikersdata opschonen'
+            )}
+          </Button>
         </div>
       </CardContent>
     </Card>
