@@ -26,7 +26,6 @@ export default function Pricing() {
   if (!isSubscriptionEnabled) {
     return (
       <Layout showForAnonymous>
-        <div className="container mx-auto py-6 space-y-6">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -43,7 +42,6 @@ export default function Pricing() {
           <div className="max-w-md mx-auto">
             <DonationCard userId={user.id} email={user.email || ''} />
           </div>
-        </div>
       </Layout>
     );
   }
