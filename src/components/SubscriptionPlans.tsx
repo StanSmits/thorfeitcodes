@@ -16,7 +16,7 @@ import {
   createCheckoutSession,
   redirectToCheckout,
 } from "@/lib/stripe";
-import { useToast } from "@/hooks/use-toast";
+import { toastInfo, toastError } from "@/components/ui/sonner";
 
 interface SubscriptionDialogProps {
   userId: string;
@@ -36,16 +36,10 @@ export function SubscriptionPlans({
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(
     currentPlan || "monthly"
   );
-  const { toast } = useToast();
 
   const handleSubscribe = async (plan: "monthly" | "yearly") => {
     if (currentPlan === plan) {
-      toast({
-        title: "Al geabonneerd",
-        description: `U bent al geabonneerd op het ${
-          plan === "monthly" ? "maandplan" : "jaarplan"
-        }.`,
-      });
+      toastInfo("Al geabonneerd", `U heeft al het ${plan === "monthly" ? "maand" : "jaar"}plan.`);
       return;
     }
 
@@ -68,12 +62,7 @@ export function SubscriptionPlans({
       onSubscriptionComplete?.();
     } catch (error) {
       console.error("Subscription error:", error);
-      toast({
-        title: "Fout",
-        description:
-          "Er is een fout opgetreden bij het verwerken van uw abonnement.",
-        variant: "destructive",
-      });
+      toastError("Fout", "Kon abonnement niet verwerken.");
     } finally {
       setLoading(false);
       setSelectedPlan(null);

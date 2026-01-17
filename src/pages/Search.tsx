@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Search as SearchIcon, FileText, Plus, X, Clock, Star, Lock } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { toastSuccess, toastError } from "@/components/ui/sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -146,20 +146,13 @@ export default function Search() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({
-        title: "Suggestie ingediend",
-        description: "Uw suggestie is ingediend en wordt beoordeeld door een beheerder.",
-      });
+      toastSuccess("Suggestie ingediend", "Wordt beoordeeld door een beheerder.");
       setSuggestDialogOpen(false);
       setSuggestedCode("");
       setSuggestedDescription("");
     },
     onError: () => {
-      toast({
-        title: "Fout",
-        description: "Er is een fout opgetreden bij het indienen van uw suggestie.",
-        variant: "destructive",
-      });
+      toastError("Fout", "Kon suggestie niet indienen.");
     },
   });
 

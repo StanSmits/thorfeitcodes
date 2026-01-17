@@ -104,19 +104,25 @@ Deno.serve(async (req) => {
     // Check if user already has a Stripe customer ID in profiles
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, full_name")
       .eq("id", userId)
       .single();
 
     if (profile?.stripe_customer_id) {
       customerId = profile.stripe_customer_id;
     } else {
-      // Create new Stripe customer
+      // Create new Stripe customer with full user data
       const customer = await stripe.customers.create({
         email,
+        name: profile?.full_name || undefined,
         metadata: {
           user_id: userId,
         },
+        // Set Netherlands as default tax location
+        address: {
+          country: "NL",
+        },
+        tax_exempt: "none",
       });
       customerId = customer.id;
 

@@ -28,21 +28,21 @@ export default function Admin() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6 px-2 sm:px-0">
       <div>
-        <h1 className="text-3xl font-bold">Beheer</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold">Beheer</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Beheer feitcodes, suggesties, verkeerstekens en gebruikers
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue={isAdmin ? 'dashboard' : 'feitcodes'} className="w-full">
-        <TabsList className="w-full flex-wrap h-auto">
-          {isAdmin && <TabsTrigger value="dashboard">Dashboard</TabsTrigger>}
-          <TabsTrigger value="feitcodes">Feitcodes</TabsTrigger>
-          <TabsTrigger value="suggestions">Suggesties</TabsTrigger>
-          <TabsTrigger value="road-signs">Verkeerstekens</TabsTrigger>
-          {isAdmin && <TabsTrigger value="users">Gebruikers</TabsTrigger>}
+        <TabsList className="w-full grid grid-cols-2 sm:flex sm:flex-wrap h-auto gap-1 p-1">
+          {isAdmin && <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 sm:px-3">Dashboard</TabsTrigger>}
+          <TabsTrigger value="feitcodes" className="text-xs sm:text-sm px-2 sm:px-3">Feitcodes</TabsTrigger>
+          <TabsTrigger value="suggestions" className="text-xs sm:text-sm px-2 sm:px-3">Suggesties</TabsTrigger>
+          <TabsTrigger value="road-signs" className="text-xs sm:text-sm px-2 sm:px-3">Verkeerstekens</TabsTrigger>
+          {isAdmin && <TabsTrigger value="users" className="text-xs sm:text-sm px-2 sm:px-3">Gebruikers</TabsTrigger>}
         </TabsList>
 
         {isAdmin && (

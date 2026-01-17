@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
+import { toastSuccess, toastError } from '@/components/ui/sonner';
 import { Plus, Pencil, Trash2, Link2, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { SkeletonTable } from '../ui/SkeletonCard';
@@ -121,17 +121,10 @@ export function AdminRoadSigns() {
       queryClient.invalidateQueries({ queryKey: ['admin-road-signs'] });
       setOpen(false);
       resetForm();
-      toast({
-        title: editingSign ? 'Bijgewerkt' : 'Toegevoegd',
-        description: `Verkeersteken is succesvol ${editingSign ? 'bijgewerkt' : 'toegevoegd'}.`,
-      });
+      toastSuccess(editingSign ? 'Bijgewerkt' : 'Toegevoegd');
     },
     onError: (error: any) => {
-      toast({
-        title: 'Fout',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toastError('Fout', error.message);
     },
   });
 
@@ -142,10 +135,7 @@ export function AdminRoadSigns() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-road-signs'] });
-      toast({
-        title: 'Verwijderd',
-        description: 'Verkeersteken is succesvol verwijderd.',
-      });
+      toastSuccess('Verwijderd');
     },
   });
 
@@ -158,14 +148,10 @@ export function AdminRoadSigns() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['road-sign-links'] });
-      toast({ title: 'Koppeling toegevoegd' });
+      toastSuccess('Koppeling toegevoegd');
     },
     onError: (error: any) => {
-      toast({
-        title: 'Fout',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toastError('Fout', error.message);
     },
   });
 
@@ -179,7 +165,7 @@ export function AdminRoadSigns() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['road-sign-links'] });
-      toast({ title: 'Koppeling verwijderd' });
+      toastSuccess('Koppeling verwijderd');
     },
   });
 

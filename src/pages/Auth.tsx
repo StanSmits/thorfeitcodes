@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "@/hooks/use-toast";
+import { toastSignIn, toastError, toastSuccess, toastEmailSent, toastPasswordChanged } from '@/components/ui/sonner';
 import { Shield } from "lucide-react";
 import { TwoFactorDialog } from "@/components/TwoFactorDialog";
 import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
@@ -160,21 +160,14 @@ export default function Auth() {
 
       if (error) throw error;
 
-      toast({
-        title: "Wachtwoord gewijzigd",
-        description: "Uw wachtwoord is succesvol gewijzigd.",
-      });
+      toastPasswordChanged();
 
       setIsRecoveryMode(false);
       setPassword("");
       setConfirmPassword("");
       await navigateAfterLogin();
     } catch (error: any) {
-      toast({
-        title: "Fout bij wijzigen wachtwoord",
-        description: error.message || "Er is een fout opgetreden.",
-        variant: "destructive",
-      });
+      toastError("Fout", error.message || "Kon wachtwoord niet wijzigen.");
     } finally {
       setLoading(false);
     }
@@ -211,17 +204,11 @@ export default function Auth() {
       if (error) throw error;
 
       setResetEmailSent(true);
-      toast({
-        title: "E-mail verzonden",
-        description: "Als dit e-mailadres bij ons bekend is, ontvangt u een link om uw wachtwoord te resetten.",
-      });
+      toastEmailSent();
     } catch (error: any) {
       // Don't reveal if email exists or not for security
       setResetEmailSent(true);
-      toast({
-        title: "E-mail verzonden",
-        description: "Als dit e-mailadres bij ons bekend is, ontvangt u een link om uw wachtwoord te resetten.",
-      });
+      toastEmailSent();
     } finally {
       setLoading(false);
     }
@@ -275,17 +262,10 @@ export default function Auth() {
         return;
       }
 
-      toast({
-        title: "Ingelogd",
-        description: "U bent succesvol ingelogd.",
-      });
+      toastSignIn();
       await navigateAfterLogin();
     } catch (error: any) {
-      toast({
-        title: "Fout bij inloggen",
-        description: error.message || "Er is een fout opgetreden.",
-        variant: "destructive",
-      });
+      toastError("Inloggen mislukt", error.message || "Controleer uw gegevens.");
       setLoading(false);
     }
   };
@@ -307,12 +287,12 @@ export default function Auth() {
           const { error: mailError } = await supabase.auth.signInWithOtp({ email });
           if (mailError) throw mailError;
 
-          toast({ title: 'Backup code geaccepteerd', description: 'Een aanmeldlink is naar uw e-mail gestuurd. Gebruik de link om in te loggen.' });
+          toastSuccess("Backup code geaccepteerd", "Aanmeldlink verzonden naar uw e-mail.");
           setShowTwoFactor(false);
           await supabase.auth.signOut();
           return true;
         } catch (err: any) {
-          toast({ title: 'Verificatie mislukt', description: err.message || 'De ingevoerde backup code is onjuist.', variant: 'destructive' });
+          toastError("Verificatie mislukt", err.message || "Ongeldige backup code.");
           return false;
         }
       }
@@ -325,20 +305,13 @@ export default function Auth() {
 
       if (error) throw error;
 
-      toast({
-        title: "Ingelogd",
-        description: "U bent succesvol ingelogd.",
-      });
+      toastSignIn();
       
       setShowTwoFactor(false);
       await navigateAfterLogin();
       return true;
     } catch (error: any) {
-      toast({
-        title: "Verificatie mislukt",
-        description: error.message || "De ingevoerde code is onjuist. Probeer het opnieuw.",
-        variant: "destructive",
-      });
+      toastError("Verificatie mislukt", "Ongeldige code. Probeer opnieuw.");
       return false;
     }
   };
@@ -381,16 +354,9 @@ export default function Auth() {
 
       if (error) throw error;
 
-      toast({
-        title: "Account aangemaakt",
-        description: "U kunt nu inloggen.",
-      });
+      toastSuccess("Account aangemaakt", "U kunt nu inloggen.");
     } catch (error: any) {
-      toast({
-        title: "Fout bij registreren",
-        description: error.message || "Er is een fout opgetreden.",
-        variant: "destructive",
-      });
+      toastError("Registratie mislukt", error.message || "Probeer het opnieuw.");
     } finally {
       setLoading(false);
     }

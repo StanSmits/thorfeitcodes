@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
+import { toastSuccess, toastError, toastSettingsUpdated } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Settings, Power, CreditCard, AlertTriangle, RefreshCw, Megaphone, HelpCircle, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -103,11 +103,7 @@ export function AppSettingsManagement() {
       }
     } catch (err) {
       console.error('Failed to fetch app settings:', err);
-      toast({
-        title: 'Fout',
-        description: 'Kon instellingen niet laden.',
-        variant: 'destructive',
-      });
+      toastError('Fout', 'Kon instellingen niet laden.');
     } finally {
       setLoading(false);
     }
@@ -135,16 +131,9 @@ export function AppSettingsManagement() {
       // Invalidate the settings cache so changes take effect immediately
       invalidateSettingsCache();
 
-      toast({
-        title: 'Instelling bijgewerkt',
-        description: `${getSettingLabel(key)} is ${newValue ? 'ingeschakeld' : 'uitgeschakeld'}.`,
-      });
+      toastSettingsUpdated();
     } catch (err: any) {
-      toast({
-        title: 'Fout bij bijwerken',
-        description: err.message || 'Er is een fout opgetreden.',
-        variant: 'destructive',
-      });
+      toastError('Fout', err.message || 'Kon instelling niet bijwerken.');
     } finally {
     setUpdating(null);
     }
@@ -159,16 +148,9 @@ export function AppSettingsManagement() {
 
       if (error) throw error;
 
-      toast({
-        title: 'Banner bijgewerkt',
-        description: bannerText.trim() ? 'De promotiebanner tekst is opgeslagen.' : 'De promotiebanner tekst is verwijderd.',
-      });
+      toastSuccess('Banner opgeslagen');
     } catch (err: any) {
-      toast({
-        title: 'Fout bij opslaan',
-        description: err.message || 'Er is een fout opgetreden.',
-        variant: 'destructive',
-      });
+      toastError('Fout', err.message || 'Kon banner niet opslaan.');
     } finally {
       setBannerLoading(false);
     }
@@ -185,16 +167,9 @@ export function AppSettingsManagement() {
 
       setBannerEnabled(enabled);
 
-      toast({
-        title: enabled ? 'Banner ingeschakeld' : 'Banner uitgeschakeld',
-        description: enabled ? 'De promotiebanner is nu zichtbaar in de app.' : 'De promotiebanner is verborgen.',
-      });
+      toastSuccess(enabled ? 'Banner ingeschakeld' : 'Banner uitgeschakeld');
     } catch (err: any) {
-      toast({
-        title: 'Fout bij wijzigen',
-        description: err.message || 'Er is een fout opgetreden.',
-        variant: 'destructive',
-      });
+      toastError('Fout', err.message || 'Kon banner niet wijzigen.');
     } finally {
       setUpdating(null);
     }
@@ -458,16 +433,9 @@ export function AppSettingsManagement() {
                       .from('settings_text')
                       .upsert({ key: 'promotion_banner_color', value: bannerColor }, { onConflict: 'key' });
                     if (error) throw error;
-                    toast({
-                      title: 'Kleur opgeslagen',
-                      description: 'De banner achtergrondkleur is bijgewerkt.',
-                    });
+                    toastSuccess('Kleur opgeslagen');
                   } catch (err: any) {
-                    toast({
-                      title: 'Fout',
-                      description: err.message || 'Kon kleur niet opslaan.',
-                      variant: 'destructive',
-                    });
+                    toastError('Fout', err.message || 'Kon kleur niet opslaan.');
                   }
                 }}
                 variant="outline"
@@ -548,16 +516,9 @@ export function AppSettingsManagement() {
                   throw new Error(result.error || 'Er is een fout opgetreden');
                 }
 
-                toast({
-                  title: 'Gebruikersdata opgeschoond',
-                  description: `${result.sanitizedCount} gebruiker(s) zijn bijgewerkt.`,
-                });
+                toastSuccess('Data opgeschoond', `${result.sanitizedCount} gebruiker(s) bijgewerkt.`);
               } catch (err: any) {
-                toast({
-                  title: 'Fout',
-                  description: err.message || 'Er is een fout opgetreden.',
-                  variant: 'destructive',
-                });
+                toastError('Fout', err.message || 'Kon data niet opschonen.');
               } finally {
                 setSanitizing(false);
               }

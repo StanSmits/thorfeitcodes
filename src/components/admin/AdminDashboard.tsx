@@ -5,13 +5,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, Crown, Shield, Activity, Search, RefreshCw } from 'lucide-react';
+import { Users, Crown, Shield, Activity, Search, RefreshCw, RefreshCcw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow, format, isAfter, subHours } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { MaintenancePasswordSettings } from './MaintenancePasswordSettings';
 import { AppSettingsManagement } from './AppSettingsManagement';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 interface UserStats {
   user_id: string;
@@ -31,6 +32,36 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [syncingStripe, setSyncingStripe] = useState(false);
+
+  const handleSyncStripeCustomers = async () => {
+    setSyncingStripe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-stripe-customers');
+      
+      if (error) {
+        throw error;
+      }
+
+      if (data.errors && data.errors.length > 0) {
+        toast.warning(`Sync voltooid met ${data.errors.length} fouten`, {
+          description: `${data.updated} van ${data.total} klanten bijgewerkt.`,
+        });
+        console.error('Sync errors:', data.errors);
+      } else {
+        toast.success('Stripe klanten gesynchroniseerd', {
+          description: `${data.updated} klanten bijgewerkt met naam en land.`,
+        });
+      }
+    } catch (err) {
+      console.error('Sync error:', err);
+      toast.error('Synchronisatie mislukt', {
+        description: err instanceof Error ? err.message : 'Onbekende fout',
+      });
+    } finally {
+      setSyncingStripe(false);
+    }
+  };
 
   const fetchUserStats = async () => {
     setLoading(true);
@@ -263,40 +294,40 @@ export function AdminDashboard() {
 
       {/* User Table */}
       <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <CardHeader className="pb-3 sm:pb-6">
+          <div className="flex flex-col gap-3 sm:gap-4">
             <div>
-              <CardTitle>Gebruikersoverzicht</CardTitle>
-              <CardDescription>
-                Bekijk abonnementsstatus en dagelijks gebruik van alle gebruikers
+              <CardTitle className="text-lg sm:text-xl">Gebruikersoverzicht</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Bekijk abonnementsstatus en dagelijks gebruik
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Zoek op naam of e-mail..."
+                  placeholder="Zoeken..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 w-64"
+                  className="pl-9 w-full"
                 />
               </div>
-              <Button variant="outline" size="icon" onClick={fetchUserStats}>
+              <Button variant="outline" size="icon" onClick={fetchUserStats} className="shrink-0">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border overflow-x-auto">
+        <CardContent className="px-2 sm:px-6">
+          <div className="rounded-md border overflow-x-auto -mx-2 sm:mx-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Gebruiker</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead>Abonnement</TableHead>
-                  <TableHead>Gebruik vandaag</TableHead>
-                  <TableHead>Laatst actief</TableHead>
+                  <TableHead className="min-w-[150px]">Gebruiker</TableHead>
+                  <TableHead className="hidden sm:table-cell">Rol</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Gebruik</TableHead>
+                  <TableHead className="hidden lg:table-cell">Laatst actief</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -310,19 +341,22 @@ export function AdminDashboard() {
                   filteredUsers.map((user) => (
                     <TableRow key={user.user_id}>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{user.full_name || 'Onbekend'}</p>
-                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate text-sm">{user.full_name || 'Onbekend'}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          <div className="flex items-center gap-1 mt-1 sm:hidden">
+                            {getRoleBadge(user.role)}
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{getRoleBadge(user.role)}</TableCell>
                       <TableCell>
                         {getSubscriptionBadge(user.subscription_status, user.subscription_plan, user.role, user.subscription_expires_at)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {getUsageBadge(user.today_usage, user.role, user.subscription_status)}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
+                      <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
                         {user.last_sign_in 
                           ? formatDistanceToNow(new Date(user.last_sign_in), { addSuffix: true, locale: nl })
                           : 'Nooit'
@@ -334,6 +368,38 @@ export function AdminDashboard() {
               </TableBody>
             </Table>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Stripe Sync Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCcw className="h-5 w-5" />
+            Stripe Klanten Synchronisatie
+          </CardTitle>
+          <CardDescription>
+            Update alle bestaande Stripe klanten met naam en Nederland als land voor facturatie.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button 
+            onClick={handleSyncStripeCustomers} 
+            disabled={syncingStripe}
+            className="flex items-center gap-2"
+          >
+            {syncingStripe ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Synchroniseren...
+              </>
+            ) : (
+              <>
+                <RefreshCcw className="h-4 w-4" />
+                Synchroniseer Stripe Klanten
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 

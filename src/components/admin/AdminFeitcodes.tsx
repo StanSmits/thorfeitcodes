@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
+import { toastSuccess, toastError, toastWarning } from '@/components/ui/sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { FieldOptionsEditor } from './FieldOptionsEditor';
@@ -316,17 +316,10 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
       queryClient.invalidateQueries({ queryKey: ['admin-feitcodes'] });
       setOpen(false);
       resetForm();
-      toast({
-        title: editingCode ? 'Bijgewerkt' : 'Toegevoegd',
-        description: `Feitcode is succesvol ${editingCode ? 'bijgewerkt' : 'toegevoegd'}.`,
-      });
+      toastSuccess(editingCode ? 'Bijgewerkt' : 'Toegevoegd');
     },
     onError: (error: any) => {
-      toast({
-        title: 'Fout',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toastError('Fout', error.message);
     },
   });
 
@@ -337,10 +330,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-feitcodes'] });
-      toast({
-        title: 'Verwijderd',
-        description: 'Feitcode is succesvol verwijderd.',
-      });
+      toastSuccess('Verwijderd');
     },
   });
 
@@ -416,7 +406,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     
     // Basic validation: required elements
     if (!formData.factcode?.trim()) {
-      toast({ title: 'Fout', description: 'Feitcode is verplicht.', variant: 'destructive' });
+      toastError('Fout', 'Feitcode is verplicht.');
       return;
     }
 
@@ -425,22 +415,22 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     // Ensure each field has a name and label
     for (const f of fields) {
       if (!f.name || !f.name.trim()) {
-        toast({ title: 'Fout', description: 'Een veld mist een naam. Geef een geldige veldnaam op.', variant: 'destructive' });
+        toastError('Fout', 'Een veld mist een naam.');
         return;
       }
       if (!f.label || !f.label.trim()) {
-        toast({ title: 'Fout', description: `Veld "${f.name}" mist een label. Vul het label in.`, variant: 'destructive' });
+        toastError('Fout', `Veld "${f.name}" mist een label.`);
         return;
       }
 
       if ((f.type === 'dropdown' || f.type === 'radio')) {
         if (!f.options || f.options.length === 0) {
-          toast({ title: 'Fout', description: `Veld "${f.name}" heeft geen opties. Voeg minstens één optie toe.`, variant: 'destructive' });
+          toastError('Fout', `Veld "${f.name}" heeft geen opties.`);
           return;
         }
         for (const opt of f.options) {
           if (!opt.label || !opt.label.trim() || !opt.value || !opt.value.trim()) {
-            toast({ title: 'Fout', description: `Een optie in veld "${f.name}" mist een label of waarde.`, variant: 'destructive' });
+            toastError('Fout', `Optie in "${f.name}" mist label/waarde.`);
             return;
           }
         }
@@ -450,11 +440,7 @@ export function AdminFeitcodes({ prefillData, onClearPrefill }: AdminFeitcodesPr
     // Validate that all field names are used in template (warning only)
     const unusedFields = fields.filter(field => !template.includes(`{${field.name}}`));
     if (unusedFields.length > 0) {
-      toast({
-        title: 'Waarschuwing',
-        description: `De volgende velden worden niet gebruikt in de template: ${unusedFields.map(f => f.name).join(', ')}`,
-        variant: 'default',
-      });
+      toastWarning('Waarschuwing', `Ongebruikte velden: ${unusedFields.map(f => f.name).join(', ')}`);
       // continue to save even when warning; if you want to block, return here
     }
 

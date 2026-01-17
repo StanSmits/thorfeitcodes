@@ -10,6 +10,7 @@ import { ThemeProvider } from "./components/ThemeProvider";
 import { AppSettingsGate } from "./components/AppSettingsGate";
 import { Layout } from "./components/Layout";
 import { PageTransition } from "./components/PageTransition";
+import { usePWAUpdate } from "./hooks/usePWAUpdate";
 import Search from "./pages/Search";
 import Generator from "./pages/Generator";
 import Kennisbank from "./pages/Kennisbank";
@@ -18,11 +19,16 @@ import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-
 import Pricing from "./pages/Pricing";
 import Success from "./pages/Success";
 
 const queryClient = new QueryClient();
+
+// PWA Update wrapper component
+function PWAUpdateHandler({ children }: { children: React.ReactNode }) {
+  usePWAUpdate();
+  return <>{children}</>;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -126,11 +132,13 @@ const App = () => (
         <AuthProvider>
           <SubscriptionProvider>
             <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <AnimatedRoutes />
-              </BrowserRouter>
+              <PWAUpdateHandler>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <AnimatedRoutes />
+                </BrowserRouter>
+              </PWAUpdateHandler>
             </TooltipProvider>
           </SubscriptionProvider>
         </AuthProvider>

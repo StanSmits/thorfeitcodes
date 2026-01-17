@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     const stripeCustomerId = profile.stripe_customer_id;
 
     // Get the public URL for the app (for return redirect)
-    const appUrl = Deno.env.get("APP_URL") || "https://jsptozrmlibvxzfkvrec.lovableproject.com";
+    const appUrl = Deno.env.get("APP_URL") || "https://rvw.stansmits.nl";
     const returnUrl = `${appUrl}/settings`;
 
     // Create Stripe Customer Portal session

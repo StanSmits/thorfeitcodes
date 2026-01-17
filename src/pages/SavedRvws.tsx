@@ -29,7 +29,7 @@ import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useNavigate, Link } from "react-router-dom";
 import { CalendarIcon, X, FileText, ChevronRight, Trash, Lock, Crown } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { toastDeleted, toastError } from "@/components/ui/sonner";
 import { SkeletonListItem } from "@/components/ui/SkeletonCard";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 
@@ -51,19 +51,12 @@ export default function SavedRvws() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({
-        title: "Verwijderd",
-        description: "De opgeslagen RvW is verwijderd.",
-      });
+      toastDeleted("RvW");
       queryClient.invalidateQueries({ queryKey: ["saved-rvws"] });
     },
     onError: (err) => {
       console.error("Failed to delete saved RvW", err);
-      toast({
-        title: "Fout",
-        description: "Kon opgeslagen RvW niet verwijderen.",
-        variant: "destructive",
-      });
+      toastError("Fout", "Kon RvW niet verwijderen.");
     },
   });
 

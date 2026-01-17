@@ -25,7 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { toast } from "@/hooks/use-toast";
+import { toastSuccess, toastInfo, toastWarning } from "@/components/ui/sonner";
 import { deepEqual } from "@/lib/utils";
 import { useSubscriptionAccess } from "@/hooks/useSubscriptionAccess";
 import { SubscriberOnlyDialog } from "@/components/SubscriberOnlyDialog";
@@ -395,10 +395,7 @@ export function RVWGenerator({
       navigator.vibrate(50);
     }
     
-    toast({
-      title: "Gekopieerd",
-      description: "De tekst is naar het klembord gekopieerd.",
-    });
+    toastSuccess("Gekopieerd!");
     setTimeout(() => setCopied(false), 2000);
 
     // Save the RvW if location field is configured (only for subscribers or when subscriptions disabled)
@@ -485,10 +482,7 @@ export function RVWGenerator({
         console.error("Failed to update timestamp", err);
       }
 
-      toast({
-        title: "RvW geladen",
-        description: "De opgeslagen RvW is geladen.",
-      });
+      toastInfo("RvW geladen");
     }
   };
 
@@ -974,11 +968,7 @@ export function RVWGenerator({
                 // Prevent Ctrl+C for free users when subscriptions are enabled
                 if (isSubscriptionEnabled && !hasUnlimitedAccess) {
                   e.preventDefault();
-                  toast({
-                    title: "Kopiëren beperkt",
-                    description: "Gebruik de kopieer knop om de tekst te kopiëren.",
-                    variant: "destructive",
-                  });
+                  toastWarning("Kopiëren beperkt", "Gebruik de kopieer knop.");
                 }
               }}
             >

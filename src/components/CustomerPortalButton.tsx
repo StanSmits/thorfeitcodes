@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
+import { toastError } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { invalidateSubscriptionCache } from '@/hooks/useSubscription';
 
@@ -17,11 +17,7 @@ export function CustomerPortalButton({ variant = 'outline', className }: Custome
 
   const handleOpenPortal = async () => {
     if (!user?.id) {
-      toast({
-        title: 'Niet ingelogd',
-        description: 'U moet ingelogd zijn om uw abonnement te beheren.',
-        variant: 'destructive',
-      });
+      toastError('Niet ingelogd', 'Log in om uw abonnement te beheren.');
       return;
     }
 
@@ -46,11 +42,7 @@ export function CustomerPortalButton({ variant = 'outline', className }: Custome
       }
     } catch (error) {
       console.error('Portal error:', error);
-      toast({
-        title: 'Fout',
-        description: error instanceof Error ? error.message : 'Kon het klantportaal niet openen.',
-        variant: 'destructive',
-      });
+      toastError('Fout', error instanceof Error ? error.message : 'Kon portaal niet openen.');
     } finally {
       setLoading(false);
     }

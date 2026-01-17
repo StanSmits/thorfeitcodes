@@ -53,7 +53,7 @@ import {
   Calendar,
   Heart
 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { toastSuccess, toastError, toastEmailSent, toastDeleted } from "@/components/ui/sonner";
 import { SkeletonTable } from "../ui/SkeletonCard";
 import { format, formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -160,17 +160,10 @@ export function AdminUsers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      toast({
-        title: "Rol bijgewerkt",
-        description: "De rol van de gebruiker is bijgewerkt.",
-      });
+      toastSuccess("Rol bijgewerkt");
     },
     onError: (error: any) => {
-      toast({
-        title: "Fout",
-        description: error.message,
-        variant: "destructive",
-      });
+      toastError("Fout", error.message);
     },
   });
 
@@ -218,16 +211,9 @@ export function AdminUsers() {
         redirectTo: redirectUrl,
       });
       if (error) throw error;
-      toast({
-        title: "E-mail verzonden",
-        description: `Wachtwoord reset e-mail verzonden naar ${email}`,
-      });
+      toastEmailSent();
     } catch (error: any) {
-      toast({
-        title: "Fout",
-        description: error.message,
-        variant: "destructive",
-      });
+      toastError("Fout", error.message);
     }
   };
 
@@ -238,18 +224,11 @@ export function AdminUsers() {
       if (error) throw error;
       
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      toast({
-        title: "Gebruiker verwijderd",
-        description: "De gebruiker is permanent verwijderd.",
-      });
+      toastDeleted("Gebruiker");
       setDeleteDialogOpen(false);
       setUserToDelete(null);
     } catch (error: any) {
-      toast({
-        title: "Fout",
-        description: error.message,
-        variant: "destructive",
-      });
+      toastError("Fout", error.message);
     }
   };
 
@@ -306,19 +285,12 @@ export function AdminUsers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      toast({
-        title: "Bijgewerkt",
-        description: "Gebruiker succesvol bijgewerkt.",
-      });
+      toastSuccess("Gebruiker bijgewerkt");
       setEditOpen(false);
       setEditingUser(null);
     },
     onError: (error: any) => {
-      toast({
-        title: "Fout",
-        description: error.message,
-        variant: "destructive",
-      });
+      toastError("Fout", error.message);
     },
   });
 
@@ -376,23 +348,23 @@ export function AdminUsers() {
         <h2 className="text-2xl font-bold">Gebruikers beheren</h2>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Alle gebruikers</CardTitle>
-            <CardDescription>
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="text-lg sm:text-xl">Alle gebruikers</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Overzicht van alle gebruikers en hun rollen
             </CardDescription>
-            <div className="mt-4 flex flex-col sm:flex-row gap-4">
+            <div className="mt-3 sm:mt-4 flex flex-col gap-3">
               <Input
-                placeholder="Zoek op naam of e-mail..."
+                placeholder="Zoeken..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="max-w-md"
+                className="w-full"
               />
 
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="grid grid-cols-2 gap-2">
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-full sm:w-[220px]">
-                    <SelectValue placeholder="Filter op rol" />
+                  <SelectTrigger className="w-full text-xs sm:text-sm">
+                    <SelectValue placeholder="Rol" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Alle rollen</SelectItem>
@@ -403,35 +375,32 @@ export function AdminUsers() {
                 </Select>
 
                 <Select value={sortOption} onValueChange={setSortOption}>
-                  <SelectTrigger className="w-full sm:w-[220px]">
-                    <SelectValue placeholder="Sorteren op" />
+                  <SelectTrigger className="w-full text-xs sm:text-sm">
+                    <SelectValue placeholder="Sorteren" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="name_asc">Naam A-Z</SelectItem>
                     <SelectItem value="name_desc">Naam Z-A</SelectItem>
-                    <SelectItem value="created_desc">
-                      Aangemaakt (nieuw → oud)
-                    </SelectItem>
-                    <SelectItem value="created_asc">
-                      Aangemaakt (oud → nieuw)
-                    </SelectItem>
+                    <SelectItem value="created_desc">Nieuw → Oud</SelectItem>
+                    <SelectItem value="created_asc">Oud → Nieuw</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {isLoading ? (
               <SkeletonTable />
             ) : (
               <>
+                <div className="rounded-md border overflow-x-auto -mx-2 sm:mx-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Gebruiker</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="min-w-[140px]">Gebruiker</TableHead>
+                      <TableHead className="hidden sm:table-cell">Status</TableHead>
                       <TableHead>Rol</TableHead>
-                      <TableHead>Acties</TableHead>
+                      <TableHead className="w-[50px]">Acties</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -450,65 +419,24 @@ export function AdminUsers() {
                       return (
                         <TableRow key={user.id}>
                           <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{user.full_name || "Onbekend"}</span>
-                              <span className="text-sm text-muted-foreground">{user.email}</span>
-                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="flex items-center gap-1 cursor-help">
-                                      <Calendar className="h-3 w-3" />
-                                      {format(new Date(user.created_at), 'd MMM yyyy', { locale: nl })}
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">
-                                    <p>Geregistreerd op {format(new Date(user.created_at), 'd MMMM yyyy HH:mm', { locale: nl })}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                                {lastSignIn && (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="flex items-center gap-1 cursor-help">
-                                        <Clock className="h-3 w-3" />
-                                        {lastSignIn}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">
-                                      <p>Laatst ingelogd: {format(new Date(user.last_sign_in), 'd MMMM yyyy HH:mm', { locale: nl })}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                )}
-                              </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-medium truncate text-sm">{user.full_name || "Onbekend"}</span>
+                              <span className="text-xs text-muted-foreground truncate">{user.email}</span>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden sm:table-cell">
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1 flex-wrap">
                                 {user.has_donated && (
-                                  <Badge variant="outline" className="bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 border-pink-300 dark:border-pink-700">
+                                  <Badge variant="outline" className="text-xs bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 border-pink-300 dark:border-pink-700">
                                     <Heart className="h-3 w-3 mr-1" />
                                     Donateur
                                   </Badge>
                                 )}
                                 {hasSubscription ? (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span>
-                                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-                                          Pro
-                                        </Badge>
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">
-                                      {user.subscription_expires_at ? (
-                                        <p>Verlengt op: {format(new Date(user.subscription_expires_at), 'd MMMM yyyy', { locale: nl })}</p>
-                                      ) : (
-                                        <p>Actief abonnement</p>
-                                      )}
-                                    </TooltipContent>
-                                  </Tooltip>
+                                  <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">Pro</Badge>
                                 ) : (
-                                  <Badge variant="secondary">Gratis</Badge>
+                                  <Badge variant="secondary" className="text-xs">Gratis</Badge>
                                 )}
                               </div>
                             </div>
@@ -571,7 +499,7 @@ export function AdminUsers() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => {
                                   navigator.clipboard.writeText(user.email);
-                                  toast({ title: "E-mail gekopieerd" });
+                                  toastSuccess("E-mail gekopieerd");
                                 }}>
                                   <Mail className="h-4 w-4 mr-2" />
                                   Kopieer e-mail
@@ -595,6 +523,7 @@ export function AdminUsers() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
 
                 {/* Edit user dialog */}
                 <Dialog open={editOpen} onOpenChange={setEditOpen}>

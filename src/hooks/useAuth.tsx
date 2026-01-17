@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { toastSignOut, toastError } from '@/components/ui/sonner';
 
 interface UserProfile {
   full_name?: string | null;
@@ -127,16 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setRoles([]);
       setProfile(null);
-      toast({
-        title: "Uitgelogd",
-        description: "U bent succesvol uitgelogd.",
-      });
+      toastSignOut();
     } catch (error) {
-      toast({
-        title: "Fout",
-        description: "Er is een fout opgetreden bij het uitloggen.",
-        variant: "destructive",
-      });
+      toastError("Fout", "Er is een fout opgetreden bij het uitloggen.");
     }
   };
 
