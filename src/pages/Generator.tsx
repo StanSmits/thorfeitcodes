@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { RVWGenerator } from '@/components/RVWGenerator';
-import { toast } from '@/hooks/use-toast';
+import { toastError } from '@/components/ui/sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
@@ -44,7 +44,7 @@ export default function Generator() {
       const { data, error } = await supabase
         .from('feitcodes')
         .select('*')
-        .eq('factcode', code.toUpperCase())
+        .ilike('factcode', code)
         .maybeSingle();
 
       if (error) {
@@ -64,11 +64,7 @@ export default function Generator() {
   // Handle error - redirect to search with toast
   useEffect(() => {
     if (error) {
-      toast({
-        title: 'Feitcode niet gevonden',
-        description: `De feitcode "${code}" bestaat niet of is verwijderd.`,
-        variant: 'destructive',
-      });
+      toastError(`Feitcode "${code}" niet gevonden`);
       navigate('/', { replace: true });
     }
   }, [error, code, navigate]);
